@@ -1,0 +1,278 @@
+import { atom, read, update } from 'claude-code'
+import type { PluginOptions, Register, StateDollar } from 'claude-code'
+
+import type { Task, TaskStatus, Timing } from '../types'
+
+const tasks = atom({ plugin: 'task-progress', key: 'tasks' } as const, [] as Task[])
+const timing = atom({ plugin: 'task-progress', key: 'timing' } as const, {
+  startedAt: null,
+  now: 0,
+  lastMs: null,
+} as Timing)
+
+/** 使用者手動切換的收合狀態；null 表示依任務狀態自動決定 */
+const collapseOverride = atom({ plugin: 'task-progress', key: 'collapseOverride' } as const, null as boolean | null)
+
+const BAR_WIDTH = 20
+
+export function formatDuration(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000))
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  if (h > 0) return `${h}h${String(m).padStart(2, '0')}m${String(s).padStart(2, '0')}s`
+  if (m > 0) return `${m}m${String(s).padStart(2, '0')}s`
+  return `${s}s`
+}
+
+export function bar(done: number, total: number): string {
+  const filled = total === 0 ? 0 : Math.round((done / total) * BAR_WIDTH)
+  return '█'.repeat(filled) + '░'.repeat(BAR_WIDTH - filled)
+}
+
+/** 依狀態變化補上開始／結束時間；直接跳到 completed 的任務沒有開始時間 */
+export function transition(task: Task, status: TaskStatus, now: number): Task {
+  if (status === task.status) return task
+  if (status === 'in_progress') return { ...task, status, startedAt: task.startedAt ?? now, endedAt: undefined }
+  if (status === 'completed') return { ...task, status, endedAt: now }
+  return { ...task, status, startedAt: undefined, endedAt: undefined }
+}
+
+/** 任務耗時：已完成取 endedAt，進行中取 now；無開始時間回 null */
+export function taskElapsed(task: Task, now: number): number | null {
+  if (task.startedAt === undefined) return null
+  if (task.status === 'completed') return (task.endedAt ?? now) - task.startedAt
+  if (task.status === 'in_progress') return now - task.startedAt
+  return null
+}
+
+const DEFAULT_FOLD_THRESHOLD = 8
+const DEFAULT_KEEP_DONE = 3
+
+/** 超過 foldThreshold 個任務時，已完成的只留最近 keepDone 筆（依完成時間），其餘摺疊 */
+export function visibleTasks(
+  list: readonly Task[],
+  foldThreshold: number = DEFAULT_FOLD_THRESHOLD,
+  keepDone: number = DEFAULT_KEEP_DONE,
+): { rows: Task[]; hiddenDone: number } {
+  if (list.length <= foldThreshold) return { rows: [...list], hiddenDone: 0 }
+  const done = list.filter(t => t.status === 'completed')
+  const kept = new Set(
+    [...done]
+      .sort((a, b) => (b.endedAt ?? 0) - (a.endedAt ?? 0))
+      .slice(0, keepDone)
+      .map(t => t.id),
+  )
+  return {
+    rows: list.filter(t => t.status !== 'completed' || kept.has(t.id)),
+    hiddenDone: done.length - kept.size,
+  }
+}
+
+/** 任務名稱長度上限的預設值；實際值由 userConfig `nameMax` 決定 */
+const DEFAULT_NAME_MAX = 20
+
+/** 從 userConfig 取出整數選項；缺值、非數字或小於 min 時用預設 */
+function intOption(options: PluginOptions, key: string, fallback: number, min: number): number {
+  const v = options[key]
+  return typeof v === 'number' && Number.isFinite(v) && v >= min ? Math.floor(v) : fallback
+}
+
+export type Settings = { nameMax: number; foldThreshold: number; keepDone: number }
+
+/** 解析 userConfig 的所有選項 */
+export function settingsFrom(options: PluginOptions): Settings {
+  return {
+    nameMax: intOption(options, 'nameMax', DEFAULT_NAME_MAX, 1),
+    foldThreshold: intOption(options, 'foldThreshold', DEFAULT_FOLD_THRESHOLD, 1),
+    keepDone: intOption(options, 'keepDone', DEFAULT_KEEP_DONE, 0),
+  }
+}
+
+/** 超過 max 個字（以 code point 計）時截斷並加上「…」 */
+export function truncate(text: string, max: number): string {
+  const chars = Array.from(text)
+  return chars.length > max ? `${chars.slice(0, max).join('')}…` : text
+}
+
+/** 收合時的摘要：已完成數與最近完成的任務 */
+export function collapsedSummary(list: readonly Task[], nameMax: number = DEFAULT_NAME_MAX): string {
+  const done = list.filter(t => t.status === 'completed')
+  const latest = done.reduce<Task | undefined>(
+    (best, t) => (best === undefined || (t.endedAt ?? 0) >= (best.endedAt ?? 0) ? t : best),
+    undefined,
+  )
+  const head = `已完成 ${done.length}/${list.length}`
+  return latest === undefined ? head : `${head}，最近：${truncate(latest.subject, nameMax)}`
+}
+
+const hasInProgress = (list: readonly Task[]): boolean => list.some(t => t.status === 'in_progress')
+
+/** 預設收合，有任務進行中時自動展開 */
+export function isCollapsedFor(list: readonly Task[], override: boolean | null): boolean {
+  return override ?? !hasInProgress(list)
+}
+
+/** 更新任務清單；自動收合狀態翻轉時清掉手動切換，讓自動行為重新接手 */
+async function updateTasks($: StateDollar, change: (list: Task[]) => Task[]): Promise<void> {
+  let flipped = false
+  await update($, tasks, prev => {
+    const nextList = change(prev)
+    flipped = hasInProgress(prev) !== hasInProgress(nextList)
+    return nextList
+  })
+  if (flipped) await update($, collapseOverride, () => null)
+}
+
+export const register: Register = (on, options) => {
+  const { nameMax, foldThreshold, keepDone } = settingsFrom(options)
+
+  on('session.start', async ($, e, next) => {
+    // 每秒刷新一次計時（僅在執行中才寫入，避免閒置時重繪）
+    $.clock.every(1000, async () => {
+      const t = await read($, timing)
+      if (t.startedAt === null) return
+      const now = await $.clock.now()
+      await update($, timing, prev => ({ ...prev, now }))
+    })
+    return next(e)
+  })
+
+  on('prompt.submit', async ($, e, next) => {
+    // 新一輪開始時，若上一批任務皆已完成則清掉
+    await updateTasks($, list =>
+      list.length > 0 && list.every(t => t.status === 'completed') ? [] : list,
+    )
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  on('turn.start', async ($, e, next) => {
+    if (e.agentId === undefined) {
+      const now = await $.clock.now()
+      await update($, timing, prev => (prev.startedAt === null ? { ...prev, startedAt: now, now } : prev))
+      // 新一輪回到自動模式：有任務進行中即展開
+      await update($, collapseOverride, () => null)
+    }
+    return next(e)
+  })
+
+  on('turn.complete', async ($, e, next) => {
+    if (e.agentId === undefined) {
+      const now = await $.clock.now()
+      await update($, timing, prev => ({
+        startedAt: null,
+        now,
+        lastMs: prev.startedAt === null ? e.durationMs : now - prev.startedAt,
+      }))
+      // 一輪結束即收合，即使仍有任務標為進行中
+      await update($, collapseOverride, () => true)
+    }
+    return next(e)
+  })
+
+  on('tool.call', { tool: 'TodoWrite' }, async ($, e, next) => {
+    const ran = await next(e)
+    if (ran.deny === undefined && ran.isError !== true) {
+      const now = await $.clock.now()
+      // TodoWrite 每次送整份清單，以內容比對沿用先前的計時
+      await updateTasks($, prev =>
+        e.todos.map((t, i) => {
+          const base: Task = prev.find(p => p.subject === t.content) ?? {
+            id: `todo-${i}`,
+            subject: t.content,
+            status: 'pending',
+          }
+          return transition({ ...base, id: `todo-${i}`, activeForm: t.activeForm }, t.status, now)
+        }),
+      )
+    }
+    return ran
+  }).catch(($, e, next) => next(e))
+
+  on('tool.call', { tool: 'TaskCreate' }, async ($, e, next) => {
+    const ran = await next(e)
+    if (ran.deny === undefined && ran.isError !== true) {
+      const task: Task = { id: ran.result.task.id, subject: e.subject, status: 'pending', activeForm: e.activeForm }
+      await updateTasks($, list => [...list.filter(t => t.id !== task.id), task])
+    }
+    return ran
+  }).catch(($, e, next) => next(e))
+
+  on('tool.call', { tool: 'TaskUpdate' }, async ($, e, next) => {
+    const ran = await next(e)
+    if (ran.deny === undefined && ran.isError !== true && ran.result.success) {
+      const { status } = e
+      const now = await $.clock.now()
+      await updateTasks($, list =>
+        status === 'deleted'
+          ? list.filter(t => t.id !== e.taskId)
+          : list.map(t =>
+              t.id === e.taskId
+                ? transition(
+                    { ...t, subject: e.subject ?? t.subject, activeForm: e.activeForm ?? t.activeForm },
+                    status ?? t.status,
+                    now,
+                  )
+                : t,
+            ),
+      )
+    }
+    return ran
+  }).catch(($, e, next) => next(e))
+
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    if (e.props.hasSurvey) return next(e)
+
+    const list = await read($, tasks)
+    const t = await read($, timing)
+    const running = t.startedAt !== null
+    if (list.length === 0 && !running && t.lastMs === null) return next(e)
+
+    const collapsed = isCollapsedFor(list, await read($, collapseOverride))
+    const { Box, Button, Text } = $.ui.resolve(e)
+    const done = list.filter(x => x.status === 'completed').length
+    const current = list.find(x => x.status === 'in_progress')
+    const pct = list.length === 0 ? 0 : Math.round((done / list.length) * 100)
+
+    const { rows, hiddenDone } = visibleTasks(list, foldThreshold, keepDone)
+
+    const elapsed = running
+      ? `執行中 ${formatDuration(t.now - (t.startedAt ?? t.now))}`
+      : t.lastMs !== null
+        ? `上一輪耗時 ${formatDuration(t.lastMs)}`
+        : null
+
+    return (
+      <Box flexDirection="column">
+        {list.length > 0 && (
+          <Box>
+            <Text color="green">{bar(done, list.length)}</Text>
+            <Text>{` ${done}/${list.length} (${pct}%)`}</Text>
+            {current && <Text dimColor>{`  進行中：${truncate(current.activeForm ?? current.subject, nameMax)}`}</Text>}
+            <Text> </Text>
+            <Button
+              key="toggle-tasks"
+              label={collapsed ? '展開' : '收合'}
+              onPress={() => update($, collapseOverride, () => !collapsed)}
+            />
+            {collapsed && <Text dimColor>{`  ${collapsedSummary(list, nameMax)}`}</Text>}
+          </Box>
+        )}
+        {!collapsed && hiddenDone > 0 && <Text dimColor>{`  …另有 ${hiddenDone} 項已完成`}</Text>}
+        {!collapsed && rows.map(task => {
+          const name = truncate(task.subject, nameMax)
+          const ms = taskElapsed(task, t.now)
+          const time = ms === null ? '' : `  ${formatDuration(ms)}`
+          if (task.status === 'completed') {
+            return <Text key={task.id} color="green">{`  ✓ ${name}${time}`}</Text>
+          }
+          if (task.status === 'in_progress') {
+            return <Text key={task.id} color="yellow">{`  ▶ ${name}${time}`}</Text>
+          }
+          return <Text key={task.id} dimColor>{`  ○ ${name}`}</Text>
+        })}
+        {elapsed !== null && <Text dimColor>{elapsed}</Text>}
+      </Box>
+    )
+  })
+}

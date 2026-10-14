@@ -1,0 +1,14 @@
+{
+  "name": "task-progress",
+  "description": "task-progress：任務進度條與執行時間的 Claude Code mod",
+  "owner": {
+    "name": "anguscyk"
+  },
+  "plugins": [
+    {
+      "name": "task-progress",
+      "source": "./",
+      "description": "提示列上方顯示任務進度條與本輪執行時間"
+    }
+  ]
+}

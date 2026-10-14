@@ -1,0 +1,35 @@
+{
+  "name": "task-progress",
+  "version": "0.1.0",
+  "description": "提示列上方顯示任務進度條與本輪執行時間",
+  "author": {
+    "name": "anguscyk"
+  },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "nameMax": {
+      "type": "number",
+      "title": "任務名稱長度上限",
+      "description": "任務名稱超過此字數時截斷並加上「…」",
+      "default": 20,
+      "min": 1,
+      "max": 200
+    },
+    "foldThreshold": {
+      "type": "number",
+      "title": "摺疊門檻",
+      "description": "任務數超過此值時，摺疊較早完成的任務",
+      "default": 8,
+      "min": 1,
+      "max": 200
+    },
+    "keepDone": {
+      "type": "number",
+      "title": "保留已完成筆數",
+      "description": "摺疊時保留最近完成的任務筆數（0 表示全部摺疊）",
+      "default": 3,
+      "min": 0,
+      "max": 200
+    }
+  }
+}
