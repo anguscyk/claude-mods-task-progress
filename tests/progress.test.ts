@@ -176,6 +176,7 @@ test('每輪結束自動收合，下一輪有任務進行中再展開', async ($
 
   await $.turn.complete({ answer: '', durationMs: 1000, isAborted: false, turnId: 't1', reason: 'answer' })
   const afterTurn = await band($)
+  expect(afterTurn.indexOf('上一輪耗時')).toBeGreaterThan(afterTurn.indexOf('toggle-tasks'))
   expect(afterTurn).toContain('展開')
   expect(afterTurn).not.toContain('▶ A')
 
@@ -295,6 +296,9 @@ test('沒有任務清單時，以本輪工具呼叫當作步驟顯示', async ($
 
   const drawn = await band($)
   expect(drawn).toContain('●●')
+  // 執行中也在同一行，且在步驟列之前
+  expect(drawn.indexOf('執行中')).toBeGreaterThan(drawn.indexOf('toggle-tasks'))
+  expect(drawn.indexOf('執行中')).toBeLessThan(drawn.indexOf('✓ Read'))
   expect(drawn).toContain(' 2 步')
   expect(drawn).toContain('✓ Read a.ts  2s')
   expect(drawn).toContain('✗ Bash 跑測試')
@@ -303,9 +307,24 @@ test('沒有任務清單時，以本輪工具呼叫當作步驟顯示', async ($
   await $.turn.complete({ answer: '', durationMs: 3000, isAborted: false, turnId: 't1', reason: 'answer' })
   const after = await band($)
   expect(after).toContain('共 2 步，失敗 1')
+  // 耗時與進度列同一行：在按鈕之後
+  expect(after).toContain('  上一輪耗時 2s')
+  expect(after.indexOf('上一輪耗時')).toBeGreaterThan(after.indexOf('toggle-tasks'))
   expect(after).not.toContain('✓ Read')
 
   // 新一輪重新計算
   await $.turn.start({ text: 'again', turnId: 't2' })
   expect(await band($)).not.toContain('步')
+})
+
+test('沒有步驟也沒有任務時，耗時單獨一行', async ($, on) => {
+  mock.clock(on)
+  answerBelow(on)
+  on('turn.start', (_$, e) => ({ turnId: e.turnId }))
+  on('turn.complete', () => ({ text: '' }))
+  await $.turn.start({ text: 'hi', turnId: 't1' })
+  await $.turn.complete({ answer: '', durationMs: 1000, isAborted: false, turnId: 't1', reason: 'answer' })
+  const drawn = await band($)
+  expect(drawn).toContain('上一輪耗時')
+  expect(drawn).not.toContain('toggle-tasks')
 })

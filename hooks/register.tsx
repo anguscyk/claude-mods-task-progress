@@ -306,6 +306,7 @@ export const register: Register = (on, options) => {
       const hiddenSteps = Math.max(0, stepList.length - RECENT_STEPS)
       return (
         <Box flexDirection="column">
+          {stepList.length === 0 && elapsedLine !== null && <Text dimColor>{elapsedLine}</Text>}
           {stepList.length > 0 && (
             <Box>
               <Text color="green">{dots(stepList)}</Text>
@@ -316,6 +317,7 @@ export const register: Register = (on, options) => {
                 label={stepsCollapsed ? '展開' : '收合'}
                 onPress={() => update($, collapseOverride, () => !stepsCollapsed)}
               />
+              {elapsedLine !== null && <Text dimColor>{`  ${elapsedLine}`}</Text>}
               {stepsCollapsed && <Text dimColor>{`  ${stepSummary(stepList)}`}</Text>}
             </Box>
           )}
@@ -328,7 +330,6 @@ export const register: Register = (on, options) => {
               if (step.status === 'failed') return <Text key={step.id} color="red">{`  ✗ ${name}  ${time}`}</Text>
               return <Text key={step.id} color="yellow">{`  ▶ ${name}  ${time}`}</Text>
             })}
-          {elapsedLine !== null && <Text dimColor>{elapsedLine}</Text>}
           {below}
         </Box>
       )
@@ -354,6 +355,7 @@ export const register: Register = (on, options) => {
               label={collapsed ? '展開' : '收合'}
               onPress={() => update($, collapseOverride, () => !collapsed)}
             />
+            {elapsedLine !== null && <Text dimColor>{`  ${elapsedLine}`}</Text>}
             {collapsed && <Text dimColor>{`  ${collapsedSummary(list, nameMax)}`}</Text>}
           </Box>
         )}
@@ -370,7 +372,6 @@ export const register: Register = (on, options) => {
           }
           return <Text key={task.id} dimColor>{`  ○ ${name}`}</Text>
         })}
-        {elapsedLine !== null && <Text dimColor>{elapsedLine}</Text>}
         {below}
       </Box>
     )
