@@ -1,7 +1,7 @@
 {
   "name": "task-progress",
   "version": "0.2.0",
-  "description": "提示列上方顯示任務進度條與本輪執行時間",
+  "description": "Shows a progress band above the prompt: a task progress bar with per-task durations, or the turn's tool calls as steps when there is no task list, plus elapsed time. Collapsed by default; press to expand.",
   "author": {
     "name": "anguscyk"
   },
