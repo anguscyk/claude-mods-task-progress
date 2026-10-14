@@ -1,6 +1,6 @@
 # task-progress
 
-[![最新版本](https://img.shields.io/github/v/release/anguscyk/claude-mods-task-progress)](https://github.com/anguscyk/claude-mods-task-progress/releases/latest)
+[![最新版本](https://img.shields.io/github/v/release/anguscyk/claude-mods-task-progress)](https://github.com/anguscyk/claude-mods-task-progress/releases/latest) [![授權：MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 Claude Code mod：在提示列上方顯示任務進度條、每個任務的耗時，以及本輪執行時間。
 
@@ -97,3 +97,7 @@ claude plugin test .           # 執行 tests/*.test.ts
 ### [0.1.0](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.1.0)（2026-10-14）
 
 - 初版：任務進度條、各任務耗時、本輪執行時間、收合／展開、摺疊已完成任務、名稱截斷，以及 `nameMax`／`foldThreshold`／`keepDone` 設定
+
+## 授權
+
+本專案採用 [MIT 授權](LICENSE)，Copyright (c) 2026 anguscyk。
