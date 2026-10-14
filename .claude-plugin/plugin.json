@@ -31,6 +31,16 @@
       "default": 3,
       "min": 0,
       "max": 200
+    },
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "description": "Language of the band's text: zh-TW (Traditional Chinese) or en (English).",
+      "default": "zh-TW",
+      "options": [
+        "zh-TW",
+        "en"
+      ]
     }
   }
 }

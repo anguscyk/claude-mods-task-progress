@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
-import { bar, collapsedSummary, dots, stepLabel, stepSummary, formatDuration, settingsFrom, truncate, isCollapsedFor, taskElapsed, transition, visibleTasks } from '../hooks/register'
+import { MESSAGES, bar, collapsedSummary, dots, stepLabel, stepSummary, formatDuration, settingsFrom, truncate, isCollapsedFor, taskElapsed, transition, visibleTasks } from '../hooks/register'
 import type { Task } from '../types'
 
 /** 代表下層 plugin（如 next-steps）畫的內容 */
@@ -213,10 +213,10 @@ test('展開列表的任務名稱超過 nameMax 時截斷', { options: { nameMax
 })
 
 test('userConfig 不合法時回預設值', () => {
-  expect(settingsFrom({})).toEqual({ nameMax: 40, foldThreshold: 8, keepDone: 3 })
-  expect(settingsFrom({ nameMax: 0, foldThreshold: 0, keepDone: -1 })).toEqual({ nameMax: 40, foldThreshold: 8, keepDone: 3 })
-  expect(settingsFrom({ nameMax: 'x', foldThreshold: '5', keepDone: true })).toEqual({ nameMax: 40, foldThreshold: 8, keepDone: 3 })
-  expect(settingsFrom({ nameMax: 8.7, foldThreshold: 4.2, keepDone: 0 })).toEqual({ nameMax: 8, foldThreshold: 4, keepDone: 0 })
+  expect(settingsFrom({})).toEqual({ nameMax: 40, foldThreshold: 8, keepDone: 3, language: 'zh-TW' })
+  expect(settingsFrom({ nameMax: 0, foldThreshold: 0, keepDone: -1 })).toEqual({ nameMax: 40, foldThreshold: 8, keepDone: 3, language: 'zh-TW' })
+  expect(settingsFrom({ nameMax: 'x', foldThreshold: '5', keepDone: true })).toEqual({ nameMax: 40, foldThreshold: 8, keepDone: 3, language: 'zh-TW' })
+  expect(settingsFrom({ nameMax: 8.7, foldThreshold: 4.2, keepDone: 0, language: 'zh-TW' })).toEqual({ nameMax: 8, foldThreshold: 4, keepDone: 0, language: 'zh-TW' })
 })
 
 test('自訂摺疊門檻與保留筆數', () => {
@@ -408,4 +408,48 @@ test('步驟列表收合時，進度列顯示執行中的步驟', async ($, on) 
   await pending
   await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
   expect(await band($)).not.toContain('進行中：')
+})
+
+test('language 選項：不合法值回預設 zh-TW', () => {
+  expect(settingsFrom({ language: 'en' }).language).toBe('en')
+  expect(settingsFrom({ language: 'fr' }).language).toBe('zh-TW')
+  expect(settingsFrom({}).language).toBe('zh-TW')
+})
+
+test('英文摘要文字', () => {
+  const en = MESSAGES.en
+  const s = (status: 'running' | 'done' | 'failed') => ({ id: status, label: status, status, startedAt: 0 })
+  expect(stepSummary([s('done'), s('failed')], en)).toBe('2 steps, 1 failed')
+  expect(stepSummary([s('done')], en)).toBe('1 step')
+  const list: Task[] = [
+    { id: '1', subject: 'Build DTO', status: 'completed', endedAt: 2 },
+    { id: '2', subject: 'Tests', status: 'pending' },
+  ]
+  expect(collapsedSummary(list, 40, en)).toBe('Done 1/2, latest: Build DTO')
+})
+
+test('language=en 時畫面文字為英文', { options: { language: 'en' } }, async ($, on) => {
+  mock.clock(on)
+  answerBelow(on)
+  on('turn.start', (_$, e) => ({ turnId: e.turnId }))
+  on('turn.complete', () => ({ text: '' }))
+  on('tool.call', { tool: 'Read' }, () => ({ result: {} }) as never)
+  on('tool.call', { tool: 'Bash' }, () => ({ deny: 'x' }))
+
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.tool.call({ tool: 'Read', file_path: '/x/a.ts' })
+  await $.tool.call({ tool: 'Bash', command: 'false' })
+  const running = await band($)
+  expect(running).toContain(' 2 steps')
+  expect(running).toContain('"label":"Expand"')
+  expect(running).toContain('Running ')
+  expect(running).toContain('2 steps, 1 failed')
+
+  await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
+  expect(await band($)).toContain('"label":"Collapse"')
+
+  await $.turn.complete({ answer: '', durationMs: 0, isAborted: false, turnId: 't1', reason: 'answer' })
+  const after = await band($)
+  expect(after).toContain('Last turn ')
+  expect(after).not.toMatch(/[\u4e00-\u9fff]/)
 })

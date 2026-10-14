@@ -84,7 +84,56 @@ function intOption(options: PluginOptions, key: string, fallback: number, min: n
   return typeof v === 'number' && Number.isFinite(v) && v >= min ? Math.floor(v) : fallback
 }
 
-export type Settings = { nameMax: number; foldThreshold: number; keepDone: number }
+export type Lang = 'zh-TW' | 'en'
+
+/** 畫面文字；依 userConfig `language` 選用 */
+export type Messages = {
+  expand: string
+  collapse: string
+  running: (elapsed: string) => string
+  lastTurn: (elapsed: string) => string
+  inProgress: (name: string) => string
+  stepCount: (n: number) => string
+  stepSummary: (total: number, failed: number) => string
+  earlierSteps: (n: number) => string
+  doneSummary: (done: number, total: number) => string
+  latest: (name: string) => string
+  moreDone: (n: number) => string
+}
+
+export const MESSAGES: Readonly<Record<Lang, Messages>> = {
+  'zh-TW': {
+    expand: '展開',
+    collapse: '收合',
+    running: d => `執行中 ${d}`,
+    lastTurn: d => `上一輪耗時 ${d}`,
+    inProgress: name => `進行中：${name}`,
+    stepCount: n => `${n} 步`,
+    stepSummary: (total, failed) => (failed > 0 ? `共 ${total} 步，失敗 ${failed}` : `共 ${total} 步`),
+    earlierSteps: n => `…前面還有 ${n} 步`,
+    doneSummary: (done, total) => `已完成 ${done}/${total}`,
+    latest: name => `，最近：${name}`,
+    moreDone: n => `…另有 ${n} 項已完成`,
+  },
+  en: {
+    expand: 'Expand',
+    collapse: 'Collapse',
+    running: d => `Running ${d}`,
+    lastTurn: d => `Last turn ${d}`,
+    inProgress: name => `Now: ${name}`,
+    stepCount: n => (n === 1 ? '1 step' : `${n} steps`),
+    stepSummary: (total, failed) => {
+      const steps = total === 1 ? '1 step' : `${total} steps`
+      return failed > 0 ? `${steps}, ${failed} failed` : steps
+    },
+    earlierSteps: n => (n === 1 ? '…1 earlier step' : `…${n} earlier steps`),
+    doneSummary: (done, total) => `Done ${done}/${total}`,
+    latest: name => `, latest: ${name}`,
+    moreDone: n => `…${n} more completed`,
+  },
+}
+
+export type Settings = { nameMax: number; foldThreshold: number; keepDone: number; language: Lang }
 
 /** 解析 userConfig 的所有選項 */
 export function settingsFrom(options: PluginOptions): Settings {
@@ -92,6 +141,7 @@ export function settingsFrom(options: PluginOptions): Settings {
     nameMax: intOption(options, 'nameMax', DEFAULT_NAME_MAX, 1),
     foldThreshold: intOption(options, 'foldThreshold', DEFAULT_FOLD_THRESHOLD, 1),
     keepDone: intOption(options, 'keepDone', DEFAULT_KEEP_DONE, 0),
+    language: options.language === 'en' ? 'en' : 'zh-TW',
   }
 }
 
@@ -102,14 +152,18 @@ export function truncate(text: string, max: number): string {
 }
 
 /** 收合時的摘要：已完成數與最近完成的任務 */
-export function collapsedSummary(list: readonly Task[], nameMax: number = DEFAULT_NAME_MAX): string {
+export function collapsedSummary(
+  list: readonly Task[],
+  nameMax: number = DEFAULT_NAME_MAX,
+  m: Messages = MESSAGES['zh-TW'],
+): string {
   const done = list.filter(t => t.status === 'completed')
   const latest = done.reduce<Task | undefined>(
     (best, t) => (best === undefined || (t.endedAt ?? 0) >= (best.endedAt ?? 0) ? t : best),
     undefined,
   )
-  const head = `已完成 ${done.length}/${list.length}`
-  return latest === undefined ? head : `${head}，最近：${truncate(latest.subject, nameMax)}`
+  const head = m.doneSummary(done.length, list.length)
+  return latest === undefined ? head : `${head}${m.latest(truncate(latest.subject, nameMax))}`
 }
 
 /** 一律預設收合，只有手動按「展開」才展開（override === false） */
@@ -149,13 +203,13 @@ export function dots(list: readonly Step[]): string {
 }
 
 /** 步驟摘要，例如「共 5 步，失敗 1」 */
-export function stepSummary(list: readonly Step[]): string {
-  const failed = list.filter(s => s.status === 'failed').length
-  return failed > 0 ? `共 ${list.length} 步，失敗 ${failed}` : `共 ${list.length} 步`
+export function stepSummary(list: readonly Step[], m: Messages = MESSAGES['zh-TW']): string {
+  return m.stepSummary(list.length, list.filter(s => s.status === 'failed').length)
 }
 
 export const register: Register = (on, options) => {
-  const { nameMax, foldThreshold, keepDone } = settingsFrom(options)
+  const { nameMax, foldThreshold, keepDone, language } = settingsFrom(options)
+  const m = MESSAGES[language]
 
   on('session.start', async ($, e, next) => {
     // 每秒刷新一次計時（僅在執行中才寫入，避免閒置時重繪）
@@ -289,9 +343,9 @@ export const register: Register = (on, options) => {
     const { Box, Button, Text } = $.ui.resolve(e)
 
     const elapsedLine = running
-      ? `執行中 ${formatDuration(t.now - (t.startedAt ?? t.now))}`
+      ? m.running(formatDuration(t.now - (t.startedAt ?? t.now)))
       : t.lastMs !== null
-        ? `上一輪耗時 ${formatDuration(t.lastMs)}`
+        ? m.lastTurn(formatDuration(t.lastMs))
         : null
 
     // 沒有任務清單：改以本輪工具呼叫當作步驟顯示
@@ -306,19 +360,19 @@ export const register: Register = (on, options) => {
           {stepList.length > 0 && (
             <Box>
               <Text color="green">{dots(stepList)}</Text>
-              <Text>{` ${stepList.length} 步`}</Text>
-              {stepsCollapsed && currentStep && <Text dimColor>{`  進行中：${currentStep.label}`}</Text>}
+              <Text>{` ${m.stepCount(stepList.length)}`}</Text>
+              {stepsCollapsed && currentStep && <Text dimColor>{`  ${m.inProgress(currentStep.label)}`}</Text>}
               <Text> </Text>
               <Button
                 key="toggle-tasks"
-                label={stepsCollapsed ? '展開' : '收合'}
+                label={stepsCollapsed ? m.expand : m.collapse}
                 onPress={() => update($, collapseOverride, () => !stepsCollapsed)}
               />
               {elapsedLine !== null && <Text dimColor>{`  ${elapsedLine}`}</Text>}
-              {stepsCollapsed && <Text dimColor>{`  ${stepSummary(stepList)}`}</Text>}
+              {stepsCollapsed && <Text dimColor>{`  ${stepSummary(stepList, m)}`}</Text>}
             </Box>
           )}
-          {!stepsCollapsed && hiddenSteps > 0 && <Text dimColor>{`  …前面還有 ${hiddenSteps} 步`}</Text>}
+          {!stepsCollapsed && hiddenSteps > 0 && <Text dimColor>{`  ${m.earlierSteps(hiddenSteps)}`}</Text>}
           {!stepsCollapsed &&
             stepList.slice(hiddenSteps).map(step => {
               const name = truncate(step.label, nameMax)
@@ -345,18 +399,18 @@ export const register: Register = (on, options) => {
           <Box>
             <Text color="green">{bar(done, list.length)}</Text>
             <Text>{` ${done}/${list.length} (${pct}%)`}</Text>
-            {current && <Text dimColor>{`  進行中：${current.activeForm ?? current.subject}`}</Text>}
+            {current && <Text dimColor>{`  ${m.inProgress(current.activeForm ?? current.subject)}`}</Text>}
             <Text> </Text>
             <Button
               key="toggle-tasks"
-              label={collapsed ? '展開' : '收合'}
+              label={collapsed ? m.expand : m.collapse}
               onPress={() => update($, collapseOverride, () => !collapsed)}
             />
             {elapsedLine !== null && <Text dimColor>{`  ${elapsedLine}`}</Text>}
-            {collapsed && <Text dimColor>{`  ${collapsedSummary(list, nameMax)}`}</Text>}
+            {collapsed && <Text dimColor>{`  ${collapsedSummary(list, nameMax, m)}`}</Text>}
           </Box>
         )}
-        {!collapsed && hiddenDone > 0 && <Text dimColor>{`  …另有 ${hiddenDone} 項已完成`}</Text>}
+        {!collapsed && hiddenDone > 0 && <Text dimColor>{`  ${m.moreDone(hiddenDone)}`}</Text>}
         {!collapsed && rows.map(task => {
           const name = truncate(task.subject, nameMax)
           const ms = taskElapsed(task, t.now)

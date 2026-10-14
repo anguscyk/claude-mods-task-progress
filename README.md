@@ -2,7 +2,7 @@
 
 [![最新版本](https://img.shields.io/github/v/release/anguscyk/claude-mods-task-progress)](https://github.com/anguscyk/claude-mods-task-progress/releases/latest) [![授權：MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-A Claude Code mod that shows a progress band above the prompt. When Claude keeps a task list (`TaskCreate` / `TodoWrite`), it draws a progress bar with each task's status and duration; otherwise it lists the turn's tool calls as steps (✓ done, ✗ failed, ▶ running). The elapsed time of the current or last turn sits on the same line. The band is collapsed by default and expands when you press its button. The interface text is in Traditional Chinese.
+A Claude Code mod that shows a progress band above the prompt. When Claude keeps a task list (`TaskCreate` / `TodoWrite`), it draws a progress bar with each task's status and duration; otherwise it lists the turn's tool calls as steps (✓ done, ✗ failed, ▶ running). The elapsed time of the current or last turn sits on the same line. The band is collapsed by default and expands when you press its button. The interface text is in Traditional Chinese by default; set the `language` option to `en` for English.
 
 Claude Code mod：在提示列上方顯示任務進度條、每個任務的耗時，以及本輪執行時間。
 
@@ -74,6 +74,7 @@ claude plugin install task-progress --marketplace anguscyk/claude-mods-task-prog
 | `nameMax` | 任務／步驟列表與收合摘要的名稱長度上限，超過截斷加「…」（進度列的「進行中」一律顯示完整名稱） | 40 | 1–200 |
 | `foldThreshold` | 任務數超過此值時摺疊較早完成的任務 | 8 | 1–200 |
 | `keepDone` | 摺疊時保留最近完成的筆數（0 表示全部摺疊） | 3 | 0–200 |
+| `language` | 畫面文字語言：`zh-TW`（繁體中文）或 `en`（英文） | `zh-TW` | `zh-TW`、`en` |
 
 不合法的值會改用預設值，小數無條件捨去。
 
