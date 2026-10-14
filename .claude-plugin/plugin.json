@@ -5,6 +5,7 @@
   "author": {
     "name": "anguscyk"
   },
+  "license": "MIT",
   "types": "./types/index.d.ts",
   "userConfig": {
     "nameMax": {
