@@ -76,7 +76,7 @@ export function visibleTasks(
 }
 
 /** 任務名稱長度上限的預設值；實際值由 userConfig `nameMax` 決定 */
-const DEFAULT_NAME_MAX = 20
+const DEFAULT_NAME_MAX = 40
 
 /** 從 userConfig 取出整數選項；缺值、非數字或小於 min 時用預設 */
 function intOption(options: PluginOptions, key: string, fallback: number, min: number): number {
@@ -112,22 +112,14 @@ export function collapsedSummary(list: readonly Task[], nameMax: number = DEFAUL
   return latest === undefined ? head : `${head}，最近：${truncate(latest.subject, nameMax)}`
 }
 
-const hasInProgress = (list: readonly Task[]): boolean => list.some(t => t.status === 'in_progress')
-
-/** 預設收合，有任務進行中時自動展開 */
-export function isCollapsedFor(list: readonly Task[], override: boolean | null): boolean {
-  return override ?? !hasInProgress(list)
+/** 一律預設收合，只有手動按「展開」才展開（override === false） */
+export function isCollapsedFor(override: boolean | null): boolean {
+  return override ?? true
 }
 
-/** 更新任務清單；自動收合狀態翻轉時清掉手動切換，讓自動行為重新接手 */
+/** 更新任務清單 */
 async function updateTasks($: StateDollar, change: (list: Task[]) => Task[]): Promise<void> {
-  let flipped = false
-  await update($, tasks, prev => {
-    const nextList = change(prev)
-    flipped = hasInProgress(prev) !== hasInProgress(nextList)
-    return nextList
-  })
-  if (flipped) await update($, collapseOverride, () => null)
+  await update($, tasks, change)
 }
 
 const basename = (path: string): string => path.split('/').filter(Boolean).pop() ?? path
@@ -177,6 +169,8 @@ export const register: Register = (on, options) => {
   })
 
   on('prompt.submit', async ($, e, next) => {
+    // 送出提示（含斜線指令）即取消手動展開，回到預設收合
+    await update($, collapseOverride, () => null)
     // 新一輪開始時，若上一批任務皆已完成則清掉
     await updateTasks($, list =>
       list.length > 0 && list.every(t => t.status === 'completed') ? [] : list,
@@ -188,7 +182,7 @@ export const register: Register = (on, options) => {
     if (e.agentId === undefined) {
       const now = await $.clock.now()
       await update($, timing, prev => (prev.startedAt === null ? { ...prev, startedAt: now, now } : prev))
-      // 新一輪回到自動模式：有任務進行中即展開
+      // 新一輪取消手動切換，回到預設收合
       await update($, collapseOverride, () => null)
       await update($, steps, () => [])
     }
@@ -302,7 +296,9 @@ export const register: Register = (on, options) => {
 
     // 沒有任務清單：改以本輪工具呼叫當作步驟顯示
     if (list.length === 0) {
-      const stepsCollapsed = override ?? !running
+      const stepsCollapsed = isCollapsedFor(override)
+      // 同時有多個執行中（平行呼叫）時取最後開始的那一步
+      const currentStep = [...stepList].reverse().find(step => step.status === 'running')
       const hiddenSteps = Math.max(0, stepList.length - RECENT_STEPS)
       return (
         <Box flexDirection="column">
@@ -311,6 +307,7 @@ export const register: Register = (on, options) => {
             <Box>
               <Text color="green">{dots(stepList)}</Text>
               <Text>{` ${stepList.length} 步`}</Text>
+              {stepsCollapsed && currentStep && <Text dimColor>{`  進行中：${currentStep.label}`}</Text>}
               <Text> </Text>
               <Button
                 key="toggle-tasks"
@@ -335,7 +332,7 @@ export const register: Register = (on, options) => {
       )
     }
 
-    const collapsed = isCollapsedFor(list, override)
+    const collapsed = isCollapsedFor(override)
     const done = list.filter(x => x.status === 'completed').length
     const current = list.find(x => x.status === 'in_progress')
     const pct = list.length === 0 ? 0 : Math.round((done / list.length) * 100)
@@ -348,7 +345,7 @@ export const register: Register = (on, options) => {
           <Box>
             <Text color="green">{bar(done, list.length)}</Text>
             <Text>{` ${done}/${list.length} (${pct}%)`}</Text>
-            {current && <Text dimColor>{`  進行中：${truncate(current.activeForm ?? current.subject, nameMax)}`}</Text>}
+            {current && <Text dimColor>{`  進行中：${current.activeForm ?? current.subject}`}</Text>}
             <Text> </Text>
             <Button
               key="toggle-tasks"

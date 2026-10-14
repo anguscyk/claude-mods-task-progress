@@ -1,6 +1,6 @@
 {
   "name": "task-progress",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "提示列上方顯示任務進度條與本輪執行時間",
   "author": {
     "name": "anguscyk"
@@ -11,7 +11,7 @@
       "type": "number",
       "title": "任務名稱長度上限",
       "description": "任務名稱超過此字數時截斷並加上「…」",
-      "default": 20,
+      "default": 40,
       "min": 1,
       "max": 200
     },
