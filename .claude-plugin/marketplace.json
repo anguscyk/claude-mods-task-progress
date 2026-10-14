@@ -1,6 +1,6 @@
 {
   "name": "task-progress",
-  "description": "task-progress：任務進度條與執行時間的 Claude Code mod",
+  "description": "task-progress: a Claude Code mod that shows task progress, per-step durations and elapsed time above the prompt.",
   "owner": {
     "name": "anguscyk"
   },
@@ -8,7 +8,7 @@
     {
       "name": "task-progress",
       "source": "./",
-      "description": "提示列上方顯示任務進度條與本輪執行時間"
+      "description": "Shows a progress band above the prompt: a task progress bar with per-task durations, or the turn's tool calls as steps when there is no task list, plus elapsed time. Collapsed by default; press to expand."
     }
   ]
 }
