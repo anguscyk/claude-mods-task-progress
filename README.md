@@ -1,5 +1,7 @@
 # task-progress
 
+[![最新版本](https://img.shields.io/github/v/release/anguscyk/claude-mods-task-progress)](https://github.com/anguscyk/claude-mods-task-progress/releases/latest)
+
 Claude Code mod：在提示列上方顯示任務進度條、每個任務的耗時，以及本輪執行時間。
 
 有任務清單時：
