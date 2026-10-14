@@ -11,7 +11,7 @@
     "nameMax": {
       "type": "number",
       "title": "任務名稱長度上限",
-      "description": "任務名稱超過此字數時截斷並加上「…」",
+      "description": "Truncate names in the task/step list and the collapsed summary to this many characters, adding \"…\" (the running label on the progress line is never truncated).",
       "default": 40,
       "min": 1,
       "max": 200
@@ -19,7 +19,7 @@
     "foldThreshold": {
       "type": "number",
       "title": "摺疊門檻",
-      "description": "任務數超過此值時，摺疊較早完成的任務",
+      "description": "When there are more tasks than this, fold the earlier completed ones.",
       "default": 8,
       "min": 1,
       "max": 200
@@ -27,7 +27,7 @@
     "keepDone": {
       "type": "number",
       "title": "保留已完成筆數",
-      "description": "摺疊時保留最近完成的任務筆數（0 表示全部摺疊）",
+      "description": "Number of most recently completed tasks to keep when folding (0 folds them all).",
       "default": 3,
       "min": 0,
       "max": 200
