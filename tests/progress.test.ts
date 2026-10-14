@@ -1,8 +1,14 @@
 import { expect, mock, test } from 'claude-code/testing'
+import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
-import { bar, collapsedSummary, formatDuration, settingsFrom, truncate, isCollapsedFor, taskElapsed, transition, visibleTasks } from '../hooks/register'
+import { bar, collapsedSummary, dots, stepLabel, stepSummary, formatDuration, settingsFrom, truncate, isCollapsedFor, taskElapsed, transition, visibleTasks } from '../hooks/register'
 import type { Task } from '../types'
+
+/** 代表下層 plugin（如 next-steps）畫的內容 */
+function answerBelow(on: On): void {
+  on('ui.render', { component: 'AbovePrompt' }, () => ({ type: 'Text', children: ['BELOW'] }) as never)
+}
 
 async function band($: Engine): Promise<string> {
   const tree = await $.ui.render({
@@ -77,6 +83,7 @@ test('收合摘要顯示完成數與最近完成的任務', () => {
 
 test('TaskCreate / TaskUpdate 追蹤任務狀態', async ($, on) => {
   const clock = mock.clock(on)
+  answerBelow(on)
   let next = 0
   on('tool.call', { tool: 'TaskCreate' }, (_$, e) => ({ result: { task: { id: String(++next), subject: e.subject } } }))
   on('tool.call', { tool: 'TaskUpdate' }, (_$, e) => ({
@@ -108,6 +115,7 @@ test('TaskCreate / TaskUpdate 追蹤任務狀態', async ($, on) => {
 
 test('TodoWrite 取代整份清單', async ($, on) => {
   mock.clock(on)
+  answerBelow(on)
   on('tool.call', { tool: 'TodoWrite' }, (_$, e) => ({ result: { oldTodos: [], newTodos: e.todos } }))
   await $.tool.call({
     tool: 'TodoWrite',
@@ -127,6 +135,7 @@ test('TodoWrite 取代整份清單', async ($, on) => {
 
 test('按鈕收合與展開任務列表', async ($, on) => {
   mock.clock(on)
+  answerBelow(on)
   on('tool.call', { tool: 'TodoWrite' }, (_$, e) => ({ result: { oldTodos: [], newTodos: e.todos } }))
   await $.tool.call({
     tool: 'TodoWrite',
@@ -152,6 +161,7 @@ test('按鈕收合與展開任務列表', async ($, on) => {
 
 test('每輪結束自動收合，下一輪有任務進行中再展開', async ($, on) => {
   mock.clock(on)
+  answerBelow(on)
   on('turn.start', (_$, e) => ({ turnId: e.turnId }))
   on('turn.complete', () => ({ text: '' }))
   on('tool.call', { tool: 'TaskCreate' }, (_$, e) => ({ result: { task: { id: '1', subject: e.subject } } }))
@@ -175,6 +185,7 @@ test('每輪結束自動收合，下一輪有任務進行中再展開', async ($
 
 test('展開列表的任務名稱超過 20 字時截斷', async ($, on) => {
   mock.clock(on)
+  answerBelow(on)
   on('tool.call', { tool: 'TodoWrite' }, (_$, e) => ({ result: { oldTodos: [], newTodos: e.todos } }))
   const long = 'abcdefghijklmnopqrstuvwxyz'
   await $.tool.call({
@@ -211,6 +222,7 @@ test('自訂摺疊門檻與保留筆數', () => {
 
 test('userConfig 摺疊設定套用到畫面', { options: { foldThreshold: 2, keepDone: 1 } }, async ($, on) => {
   mock.clock(on)
+  answerBelow(on)
   on('tool.call', { tool: 'TodoWrite' }, (_$, e) => ({ result: { oldTodos: [], newTodos: e.todos } }))
   await $.tool.call({
     tool: 'TodoWrite',
@@ -227,6 +239,7 @@ test('userConfig 摺疊設定套用到畫面', { options: { foldThreshold: 2, ke
 
 test('userConfig nameMax 調整截斷長度', { options: { nameMax: 5 } }, async ($, on) => {
   mock.clock(on)
+  answerBelow(on)
   on('tool.call', { tool: 'TodoWrite' }, (_$, e) => ({ result: { oldTodos: [], newTodos: e.todos } }))
   await $.tool.call({
     tool: 'TodoWrite',
@@ -235,4 +248,64 @@ test('userConfig nameMax 調整截斷長度', { options: { nameMax: 5 } }, async
   const drawn = await band($)
   expect(drawn).toContain('▶ abcde…')
   expect(drawn).toContain('進行中：Worki…')
+})
+
+test('保留下層 plugin 的內容（例如 next-steps）', async ($, on) => {
+  mock.clock(on)
+  answerBelow(on)
+  on('tool.call', { tool: 'TodoWrite' }, (_$, e) => ({ result: { oldTodos: [], newTodos: e.todos } }))
+  // 尚無資料時只回下層
+  const idle = await band($)
+  expect(idle).toContain('BELOW')
+  expect(idle).not.toContain('task-progress')
+  await $.tool.call({ tool: 'TodoWrite', todos: [{ content: 'a', status: 'in_progress', activeForm: 'A' }] })
+  const drawn = await band($)
+  expect(drawn).toContain('▶ a')
+  expect(drawn).toContain('BELOW')
+})
+
+test('步驟描述、點狀進度與摘要', () => {
+  expect(stepLabel('Read', { file_path: '/a/b/register.tsx' })).toBe('Read register.tsx')
+  expect(stepLabel('Bash', { command: 'npm test', description: '執行測試' })).toBe('Bash 執行測試')
+  expect(stepLabel('Bash', { command: 'ls -la\nmore' })).toBe('Bash ls -la')
+  expect(stepLabel('Grep', { pattern: 'foo' })).toBe('Grep foo')
+  expect(stepLabel('TaskList', {})).toBe('TaskList')
+
+  const s = (status: 'running' | 'done' | 'failed') => ({ id: status, label: status, status, startedAt: 0 })
+  expect(dots([s('done'), s('failed'), s('running')])).toBe('●●○')
+  expect(dots(Array.from({ length: 30 }, () => s('done')))).toBe('●'.repeat(20))
+  expect(stepSummary([s('done'), s('failed')])).toBe('共 2 步，失敗 1')
+  expect(stepSummary([s('done')])).toBe('共 1 步')
+})
+
+test('沒有任務清單時，以本輪工具呼叫當作步驟顯示', async ($, on) => {
+  const clock = mock.clock(on)
+  answerBelow(on)
+  on('turn.start', (_$, e) => ({ turnId: e.turnId }))
+  on('turn.complete', () => ({ text: '' }))
+  on('tool.call', { tool: 'Read' }, async () => {
+    await clock.advance(2_000)
+    return { result: { type: 'text', file: { filePath: '/x/a.ts', content: '', numLines: 0, startLine: 1, totalLines: 0 } } } as never
+  })
+  on('tool.call', { tool: 'Bash' }, () => ({ deny: 'nope' }))
+
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.tool.call({ tool: 'Read', file_path: '/x/a.ts' })
+  await $.tool.call({ tool: 'Bash', command: 'false', description: '跑測試' })
+
+  const drawn = await band($)
+  expect(drawn).toContain('●●')
+  expect(drawn).toContain(' 2 步')
+  expect(drawn).toContain('✓ Read a.ts  2s')
+  expect(drawn).toContain('✗ Bash 跑測試')
+  expect(drawn).toContain('BELOW')
+
+  await $.turn.complete({ answer: '', durationMs: 3000, isAborted: false, turnId: 't1', reason: 'answer' })
+  const after = await band($)
+  expect(after).toContain('共 2 步，失敗 1')
+  expect(after).not.toContain('✓ Read')
+
+  // 新一輪重新計算
+  await $.turn.start({ text: 'again', turnId: 't2' })
+  expect(await band($)).not.toContain('步')
 })

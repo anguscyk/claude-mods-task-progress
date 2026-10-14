@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { PluginOptions, Register, StateDollar } from 'claude-code'
 
-import type { Task, TaskStatus, Timing } from '../types'
+import type { Step, StepStatus, Task, TaskStatus, Timing } from '../types'
 
 const tasks = atom({ plugin: 'task-progress', key: 'tasks' } as const, [] as Task[])
 const timing = atom({ plugin: 'task-progress', key: 'timing' } as const, {
@@ -13,7 +13,13 @@ const timing = atom({ plugin: 'task-progress', key: 'timing' } as const, {
 /** 使用者手動切換的收合狀態；null 表示依任務狀態自動決定 */
 const collapseOverride = atom({ plugin: 'task-progress', key: 'collapseOverride' } as const, null as boolean | null)
 
+const steps = atom({ plugin: 'task-progress', key: 'steps' } as const, [] as Step[])
+
 const BAR_WIDTH = 20
+/** 步驟列表只列最近幾步，其餘摺疊 */
+const RECENT_STEPS = 5
+/** 步驟點狀進度最多畫幾個點 */
+const MAX_DOTS = 20
 
 export function formatDuration(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000))
@@ -124,6 +130,38 @@ async function updateTasks($: StateDollar, change: (list: Task[]) => Task[]): Pr
   if (flipped) await update($, collapseOverride, () => null)
 }
 
+const basename = (path: string): string => path.split('/').filter(Boolean).pop() ?? path
+
+/** 工具呼叫的簡短描述，例如「Read register.tsx」「Bash 執行測試」 */
+export function stepLabel(tool: string, input: Readonly<Record<string, unknown>>): string {
+  const str = (key: string): string | undefined => {
+    const v = input[key]
+    return typeof v === 'string' && v.trim() !== '' ? v.trim().split('\n')[0] : undefined
+  }
+  const path = str('file_path') ?? str('notebook_path')
+  const detail =
+    tool === 'Bash'
+      ? (str('description') ?? str('command'))
+      : path !== undefined
+        ? basename(path)
+        : (str('description') ?? str('pattern') ?? str('url') ?? str('query') ?? str('skill'))
+  return detail === undefined ? tool : `${tool} ${detail}`
+}
+
+/** 點狀進度：完成（含失敗）為 ●、執行中為 ○，最多 MAX_DOTS 個 */
+export function dots(list: readonly Step[]): string {
+  const finished = list.filter(s => s.status !== 'running').length
+  const running = list.length - finished
+  const shownRunning = Math.min(running, MAX_DOTS)
+  return '●'.repeat(Math.min(finished, MAX_DOTS - shownRunning)) + '○'.repeat(shownRunning)
+}
+
+/** 步驟摘要，例如「共 5 步，失敗 1」 */
+export function stepSummary(list: readonly Step[]): string {
+  const failed = list.filter(s => s.status === 'failed').length
+  return failed > 0 ? `共 ${list.length} 步，失敗 ${failed}` : `共 ${list.length} 步`
+}
+
 export const register: Register = (on, options) => {
   const { nameMax, foldThreshold, keepDone } = settingsFrom(options)
 
@@ -152,6 +190,7 @@ export const register: Register = (on, options) => {
       await update($, timing, prev => (prev.startedAt === null ? { ...prev, startedAt: now, now } : prev))
       // 新一輪回到自動模式：有任務進行中即展開
       await update($, collapseOverride, () => null)
+      await update($, steps, () => [])
     }
     return next(e)
   })
@@ -169,6 +208,27 @@ export const register: Register = (on, options) => {
     }
     return next(e)
   })
+
+  // 主對話的每個工具呼叫記為一步（子代理內部的呼叫不計）
+  let stepSeq = 0
+  on('tool.call', async ($, e, next) => {
+    if (e.agentId !== undefined) return next(e)
+    const id = `step-${++stepSeq}`
+    const label = stepLabel(e.tool, e as unknown as Readonly<Record<string, unknown>>)
+    const startedAt = await $.clock.now()
+    const step: Step = { id, label, status: 'running', startedAt }
+    await update($, steps, list => [...list, step])
+    let failed = true
+    try {
+      const ran = await next(e)
+      failed = ran.deny !== undefined || ran.isError === true
+      return ran
+    } finally {
+      const endedAt = await $.clock.now()
+      const status: StepStatus = failed ? 'failed' : 'done'
+      await update($, steps, list => list.map(s => (s.id === id ? { ...s, status, endedAt } : s)))
+    }
+  }).catch(($, e, next) => next(e))
 
   on('tool.call', { tool: 'TodoWrite' }, async ($, e, next) => {
     const ran = await next(e)
@@ -221,26 +281,65 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (e.props.hasSurvey) return next(e)
+    // 一律先取得下層（其他 mod 如 next-steps、引擎預設）的內容，與自己的區塊疊在一起
+    const below = await next(e)
+    if (e.props.hasSurvey) return below
 
     const list = await read($, tasks)
     const t = await read($, timing)
+    const stepList = await read($, steps)
     const running = t.startedAt !== null
-    if (list.length === 0 && !running && t.lastMs === null) return next(e)
+    if (list.length === 0 && stepList.length === 0 && !running && t.lastMs === null) return below
 
-    const collapsed = isCollapsedFor(list, await read($, collapseOverride))
+    const override = await read($, collapseOverride)
     const { Box, Button, Text } = $.ui.resolve(e)
+
+    const elapsedLine = running
+      ? `執行中 ${formatDuration(t.now - (t.startedAt ?? t.now))}`
+      : t.lastMs !== null
+        ? `上一輪耗時 ${formatDuration(t.lastMs)}`
+        : null
+
+    // 沒有任務清單：改以本輪工具呼叫當作步驟顯示
+    if (list.length === 0) {
+      const stepsCollapsed = override ?? !running
+      const hiddenSteps = Math.max(0, stepList.length - RECENT_STEPS)
+      return (
+        <Box flexDirection="column">
+          {stepList.length > 0 && (
+            <Box>
+              <Text color="green">{dots(stepList)}</Text>
+              <Text>{` ${stepList.length} 步`}</Text>
+              <Text> </Text>
+              <Button
+                key="toggle-tasks"
+                label={stepsCollapsed ? '展開' : '收合'}
+                onPress={() => update($, collapseOverride, () => !stepsCollapsed)}
+              />
+              {stepsCollapsed && <Text dimColor>{`  ${stepSummary(stepList)}`}</Text>}
+            </Box>
+          )}
+          {!stepsCollapsed && hiddenSteps > 0 && <Text dimColor>{`  …前面還有 ${hiddenSteps} 步`}</Text>}
+          {!stepsCollapsed &&
+            stepList.slice(hiddenSteps).map(step => {
+              const name = truncate(step.label, nameMax)
+              const time = formatDuration((step.endedAt ?? Math.max(t.now, step.startedAt)) - step.startedAt)
+              if (step.status === 'done') return <Text key={step.id} color="green">{`  ✓ ${name}  ${time}`}</Text>
+              if (step.status === 'failed') return <Text key={step.id} color="red">{`  ✗ ${name}  ${time}`}</Text>
+              return <Text key={step.id} color="yellow">{`  ▶ ${name}  ${time}`}</Text>
+            })}
+          {elapsedLine !== null && <Text dimColor>{elapsedLine}</Text>}
+          {below}
+        </Box>
+      )
+    }
+
+    const collapsed = isCollapsedFor(list, override)
     const done = list.filter(x => x.status === 'completed').length
     const current = list.find(x => x.status === 'in_progress')
     const pct = list.length === 0 ? 0 : Math.round((done / list.length) * 100)
 
     const { rows, hiddenDone } = visibleTasks(list, foldThreshold, keepDone)
-
-    const elapsed = running
-      ? `執行中 ${formatDuration(t.now - (t.startedAt ?? t.now))}`
-      : t.lastMs !== null
-        ? `上一輪耗時 ${formatDuration(t.lastMs)}`
-        : null
 
     return (
       <Box flexDirection="column">
@@ -271,7 +370,8 @@ export const register: Register = (on, options) => {
           }
           return <Text key={task.id} dimColor>{`  ○ ${name}`}</Text>
         })}
-        {elapsed !== null && <Text dimColor>{elapsed}</Text>}
+        {elapsedLine !== null && <Text dimColor>{elapsedLine}</Text>}
+        {below}
       </Box>
     )
   })
