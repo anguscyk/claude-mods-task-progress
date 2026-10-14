@@ -81,7 +81,9 @@ claude plugin test .           # 執行 tests/*.test.ts
 
 ## 變更紀錄
 
-### 0.2.0（2026-10-14）
+所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。
+
+### [0.2.0](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.2.0)（2026-10-14）
 
 - 新增：沒有任務清單時，以本輪主對話的工具呼叫當作步驟顯示（點狀進度、✓／✗／▶ 與耗時，只列最近 5 步）
 - 新增：步驟列表收合時，進度列顯示目前執行中的步驟
@@ -90,6 +92,6 @@ claude plugin test .           # 執行 tests/*.test.ts
 - 變更：`nameMax` 預設由 20 改為 40；進度列的「進行中」改為顯示完整名稱
 - 修正：繪製時未保留下層內容，導致其他 mod（如 next-steps）的區塊被蓋掉
 
-### 0.1.0（2026-10-14）
+### [0.1.0](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.1.0)（2026-10-14）
 
 - 初版：任務進度條、各任務耗時、本輪執行時間、收合／展開、摺疊已完成任務、名稱截斷，以及 `nameMax`／`foldThreshold`／`keepDone` 設定
