@@ -27,21 +27,20 @@ Claude Code mod：在提示列上方顯示任務進度條、每個任務的耗�
 在終端機的 Claude Code 提示列輸入：
 
 ```
-/plugin install task-progress --marketplace <owner>/<repo>
+/plugin install task-progress --marketplace anguscyk/claude-mods-task-progress
 ```
 
 或在 shell 執行：
 
 ```
-claude plugin install task-progress --marketplace <owner>/<repo>
+claude plugin install task-progress --marketplace anguscyk/claude-mods-task-progress
 ```
 
-`<owner>/<repo>` 換成存放本 mod 的 repository；也可以改用 git URL 或本機資料夾路徑。
 出現 `Add marketplace?` 時按 `y`，再選安裝範圍（預設 user）。
 
-桌面版 App 不支援 `/plugin` 指令：點提示框旁的 +，選 Plugins → Add marketplace，填入 `<owner>/<repo>`，再 Add plugin。
+桌面版 App 不支援 `/plugin` 指令：點提示框旁的 +，選 Plugins → Add marketplace，填入 `anguscyk/claude-mods-task-progress`，再 Add plugin。
 
-私人 repository 需要安裝者能在 git 伺服器上讀取，且電腦上已設好 git 憑證（SSH key，或 `gh auth login` 後執行 `gh auth setup-git`）；安裝過程不會詢問帳密。
+本 repository 為 GitHub 私人 repo：安裝者須先被加為 collaborator，且電腦上已設好 GitHub 的 git 憑證（SSH key，或 `gh auth login` 後執行 `gh auth setup-git`）；安裝過程不會詢問帳密。
 
 ## 設定
 
