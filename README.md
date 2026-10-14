@@ -63,8 +63,6 @@ claude plugin install task-progress --marketplace anguscyk/claude-mods-task-prog
 
 桌面版 App 不支援 `/plugin` 指令：點提示框旁的 +，選 Plugins → Add marketplace，填入 `anguscyk/claude-mods-task-progress`，再 Add plugin。
 
-本 repository 為 GitHub 私人 repo：安裝者須先被加為 collaborator，且電腦上已設好 GitHub 的 git 憑證（SSH key，或 `gh auth login` 後執行 `gh auth setup-git`）；安裝過程不會詢問帳密。
-
 ## 設定
 
 安裝後可在 `/config` 調整，或寫在 settings.json 的 `pluginConfigs["task-progress"].options`：
