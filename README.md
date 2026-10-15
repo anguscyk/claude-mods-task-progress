@@ -2,7 +2,7 @@
 
 [![最新版本](https://img.shields.io/github/v/release/anguscyk/claude-mods-task-progress)](https://github.com/anguscyk/claude-mods-task-progress/releases/latest) [![授權：MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-A Claude Code mod that shows a progress band above the prompt. When Claude keeps a task list (`TaskCreate` / `TodoWrite`), it draws a progress bar with each task's status and duration; otherwise it lists the turn's tool calls as steps (✓ done, ✗ failed, ▶ running). The elapsed time of the current or last turn sits on the same line. The band is collapsed by default and expands when you press its button. The interface text is in Traditional Chinese by default; set the `language` option to `en` for English.
+A Claude Code mod that shows a progress band above the prompt. When Claude keeps a task list (`TaskCreate` / `TodoWrite`), it draws a progress bar with each task's status and duration; otherwise it lists the turn's tool calls as steps (✓ done, ✗ failed, ▶ running). The elapsed time of the current or last turn sits on the same line. The band is collapsed by default and expands when you press its button. The band uses language-neutral symbols, so it reads the same in any language.
 
 Claude Code mod：在提示列上方顯示任務進度條、每個任務的耗時，以及本輪執行時間。
 
@@ -43,8 +43,8 @@ Claude Code mod：在提示列上方顯示任務進度條、每個任務的耗�
 - **任務耗時**：每個任務從進行中到完成的時間；已完成打勾（✓）、進行中（▶）、未開始（○）
 - **執行時間**：與進度列同一行，本輪進行中以 ⟳ 每秒更新，結束後以 ◷ 顯示上一輪耗時（只計主對話，不含子代理）
 - **收合／展開**：行首的 `[ + ]`／`[ - ]` 按鈕（`[ + ]` 收合中，按下展開；`[ - ]` 展開中，按下收合）。一律預設收合（執行中也是），只有手動按下才展開；每輪結束或下一次送出提示時自動收回
-- **收合摘要**：收合時顯示「✓3/5，最近：建立 DTO」
-- **摺疊**：任務數超過門檻時，較早完成的任務摺疊成「…另有 N 項已完成」
+- **收合摘要**：收合時顯示「✓3/5 · 建立 DTO」（已完成數與最近完成的任務）
+- **摺疊**：任務數超過門檻時，較早完成的任務摺疊成「… +N ✓」
 - **名稱截斷**：列表與收合摘要中的名稱超過上限時截斷並加「…」；進度列的「進行中」顯示完整名稱
 
 ## 安裝
@@ -74,7 +74,7 @@ claude plugin install task-progress --marketplace anguscyk/claude-mods-task-prog
 | `nameMax` | 任務／步驟列表與收合摘要的名稱長度上限，超過截斷加「…」（進度列的「進行中」一律顯示完整名稱） | 40 | 1–200 |
 | `foldThreshold` | 任務數超過此值時摺疊較早完成的任務 | 8 | 1–200 |
 | `keepDone` | 摺疊時保留最近完成的筆數（0 表示全部摺疊） | 3 | 0–200 |
-| `language` | 畫面文字語言：`zh-TW`（繁體中文）或 `en`（英文） | `zh-TW` | `zh-TW`、`en` |
+| `language` | 畫面文字語言：`zh-TW`（繁體中文）或 `en`（英文）。目前畫面已全面改用不分語言的符號，此設定暫無作用 | `zh-TW` | `zh-TW`、`en` |
 
 不合法的值會改用預設值，小數無條件捨去。
 

@@ -106,22 +106,11 @@ export const lastTurnTime = (elapsed: string): string => `◷ ${elapsed}`
 
 export type Lang = 'zh-TW' | 'en'
 
-/** 畫面文字；依 userConfig `language` 選用 */
-export type Messages = {
-  latest: (name: string) => string
-  moreDone: (n: number) => string
-}
+/** 收合摘要中最近完成的任務（不分語言），例如「 · 建立 DTO」 */
+export const latestDone = (name: string): string => ` · ${name}`
 
-export const MESSAGES: Readonly<Record<Lang, Messages>> = {
-  'zh-TW': {
-    latest: name => `，最近：${name}`,
-    moreDone: n => `…另有 ${n} 項已完成`,
-  },
-  en: {
-    latest: name => `, latest: ${name}`,
-    moreDone: n => `…${n} more completed`,
-  },
-}
+/** 摺疊的已完成任務數（不分語言），例如「… +3 ✓」 */
+export const moreDone = (n: number): string => `… +${n} ✓`
 
 export type Settings = { nameMax: number; foldThreshold: number; keepDone: number; language: Lang }
 
@@ -145,7 +134,6 @@ export function truncate(text: string, max: number): string {
 export function collapsedSummary(
   list: readonly Task[],
   nameMax: number = DEFAULT_NAME_MAX,
-  m: Messages = MESSAGES['zh-TW'],
 ): string {
   const done = list.filter(t => t.status === 'completed')
   const latest = done.reduce<Task | undefined>(
@@ -153,7 +141,7 @@ export function collapsedSummary(
     undefined,
   )
   const head = doneCount(done.length, list.length)
-  return latest === undefined ? head : `${head}${m.latest(truncate(latest.subject, nameMax))}`
+  return latest === undefined ? head : `${head}${latestDone(truncate(latest.subject, nameMax))}`
 }
 
 /** 一律預設收合，只有手動按「展開」才展開（override === false） */
@@ -204,8 +192,7 @@ export function stepFailures(list: readonly Step[]): string {
 }
 
 export const register: Register = (on, options) => {
-  const { nameMax, foldThreshold, keepDone, language } = settingsFrom(options)
-  const m = MESSAGES[language]
+  const { nameMax, foldThreshold, keepDone } = settingsFrom(options)
 
   on('session.start', async ($, e, next) => {
     // 每秒刷新一次計時（僅在執行中才寫入，避免閒置時重繪）
@@ -403,10 +390,10 @@ export const register: Register = (on, options) => {
             <Text>{` ${done}/${list.length} (${pct}%)`}</Text>
             {current && <Text dimColor>{`  ${inProgress(current.activeForm ?? current.subject)}`}</Text>}
             {elapsedLine !== null && <Text dimColor>{`  ${elapsedLine}`}</Text>}
-            {collapsed && <Text dimColor>{`  ${collapsedSummary(list, nameMax, m)}`}</Text>}
+            {collapsed && <Text dimColor>{`  ${collapsedSummary(list, nameMax)}`}</Text>}
           </Box>
         )}
-        {!collapsed && hiddenDone > 0 && <Text dimColor>{`  ${m.moreDone(hiddenDone)}`}</Text>}
+        {!collapsed && hiddenDone > 0 && <Text dimColor>{`  ${moreDone(hiddenDone)}`}</Text>}
         {!collapsed && rows.map(task => {
           const name = truncate(task.subject, nameMax)
           const ms = taskElapsed(task, t.now)

@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
-import { MESSAGES, bar, collapsedSummary, dots, stepCount, stepFailures, stepLabel, formatDuration, settingsFrom, truncate, isCollapsedFor, taskElapsed, transition, visibleTasks } from '../hooks/register'
+import { bar, collapsedSummary, dots, stepCount, stepFailures, stepLabel, formatDuration, settingsFrom, truncate, isCollapsedFor, taskElapsed, transition, visibleTasks } from '../hooks/register'
 import type { Task } from '../types'
 
 /** 代表下層 plugin（如 next-steps）畫的內容 */
@@ -67,12 +67,12 @@ test('收合摘要顯示完成數與最近完成的任務', () => {
     { id: '2', subject: '撰寫 Service', status: 'completed', endedAt: 100 },
     { id: '3', subject: '測試', status: 'pending' },
   ]
-  expect(collapsedSummary(list)).toBe('✓2/3，最近：建立 DTO')
+  expect(collapsedSummary(list)).toBe('✓2/3 · 建立 DTO')
   expect(collapsedSummary([{ id: '1', subject: 'A', status: 'pending' }])).toBe('✓0/1')
 
   const long = '一二三四五六七八九十一二三四五六七八九十多出來的字'
   expect(collapsedSummary([{ id: '1', subject: long, status: 'completed', endedAt: 1 }], 20)).toBe(
-    '✓1/1，最近：一二三四五六七八九十一二三四五六七八九十…',
+    '✓1/1 · 一二三四五六七八九十一二三四五六七八九十…',
   )
   expect(truncate('x'.repeat(20), 20)).toBe('x'.repeat(20))
   expect(truncate('x'.repeat(21), 20)).toBe(`${'x'.repeat(20)}…`)
@@ -151,7 +151,7 @@ test('按鈕收合與展開任務列表', async ($, on) => {
   // 沒有進行中的任務：預設收合
   const collapsed = await band($)
   expect(collapsed).toContain('"label":"+"')
-  expect(collapsed).toContain('✓1/2，最近：x')
+  expect(collapsed).toContain('✓1/2 · x')
   expect(collapsed).toContain('1/2 (50%)')
   expect(collapsed).not.toContain('○ y')
 
@@ -159,7 +159,7 @@ test('按鈕收合與展開任務列表', async ($, on) => {
   const expanded = await band($)
   expect(expanded).toContain('"label":"-"')
   expect(expanded).toContain('○ y')
-  expect(expanded).not.toContain('最近：')
+  expect(expanded).not.toContain('✓1/2 · x')
 })
 
 test('執行中也維持收合；手動展開後於每輪結束收回', async ($, on) => {
@@ -244,7 +244,7 @@ test('userConfig 摺疊設定套用到畫面', { options: { foldThreshold: 2, ke
   await band($)
   await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
   const drawn = await band($)
-  expect(drawn).toContain('…另有 1 項已完成')
+  expect(drawn).toContain('… +1 ✓')
   expect(drawn).toContain('▶ c')
 })
 
@@ -354,7 +354,7 @@ test('沒有步驟也沒有任務時，耗時單獨一行', async ($, on) => {
 test('預設名稱上限為 40 字', () => {
   const long = 'x'.repeat(45)
   expect(collapsedSummary([{ id: '1', subject: long, status: 'completed', endedAt: 1 }])).toBe(
-    `✓1/1，最近：${'x'.repeat(40)}…`,
+    `✓1/1 · ${'x'.repeat(40)}…`,
   )
 })
 
@@ -425,13 +425,12 @@ test('language 選項：不合法值回預設 zh-TW', () => {
   expect(settingsFrom({}).language).toBe('zh-TW')
 })
 
-test('英文摘要文字', () => {
-  const en = MESSAGES.en
+test('收合摘要不分語言', () => {
   const list: Task[] = [
     { id: '1', subject: 'Build DTO', status: 'completed', endedAt: 2 },
     { id: '2', subject: 'Tests', status: 'pending' },
   ]
-  expect(collapsedSummary(list, 40, en)).toBe('✓1/2, latest: Build DTO')
+  expect(collapsedSummary(list, 40)).toBe('✓1/2 · Build DTO')
 })
 
 test('language=en 時畫面文字為英文', { options: { language: 'en' } }, async ($, on) => {
