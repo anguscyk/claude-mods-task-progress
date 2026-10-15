@@ -93,26 +93,27 @@ export const inProgress = (name: string): string => `▶ ${name}`
 /** 已完成數（不分語言），例如「✓3/5」 */
 export const doneCount = (done: number, total: number): string => `✓${done}/${total}`
 
+/**
+ * 時間（不分語言）：⟳ 本輪執行中、◷ 上一輪耗時。
+ * 刻意不用 ⏲／⏱：它們屬於 emoji，部分終端機會以彩色寬字元顯示而跑版。
+ */
+export const runningTime = (elapsed: string): string => `⟳ ${elapsed}`
+export const lastTurnTime = (elapsed: string): string => `◷ ${elapsed}`
+
 export type Lang = 'zh-TW' | 'en'
 
 /** 畫面文字；依 userConfig `language` 選用 */
 export type Messages = {
-  running: (elapsed: string) => string
-  lastTurn: (elapsed: string) => string
   latest: (name: string) => string
   moreDone: (n: number) => string
 }
 
 export const MESSAGES: Readonly<Record<Lang, Messages>> = {
   'zh-TW': {
-    running: d => `執行中 ${d}`,
-    lastTurn: d => `上一輪耗時 ${d}`,
     latest: name => `，最近：${name}`,
     moreDone: n => `…另有 ${n} 項已完成`,
   },
   en: {
-    running: d => `Running ${d}`,
-    lastTurn: d => `Last turn ${d}`,
     latest: name => `, latest: ${name}`,
     moreDone: n => `…${n} more completed`,
   },
@@ -334,9 +335,9 @@ export const register: Register = (on, options) => {
     const { Box, Button, Text } = $.ui.resolve(e)
 
     const elapsedLine = running
-      ? m.running(formatDuration(t.now - (t.startedAt ?? t.now)))
+      ? runningTime(formatDuration(t.now - (t.startedAt ?? t.now)))
       : t.lastMs !== null
-        ? m.lastTurn(formatDuration(t.lastMs))
+        ? lastTurnTime(formatDuration(t.lastMs))
         : null
 
     // 沒有任務清單：改以本輪工具呼叫當作步驟顯示

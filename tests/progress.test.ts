@@ -181,7 +181,7 @@ test('執行中也維持收合；手動展開後於每輪結束收回', async ($
 
   await $.turn.complete({ answer: '', durationMs: 1000, isAborted: false, turnId: 't1', reason: 'answer' })
   const afterTurn = await band($)
-  expect(afterTurn.indexOf('上一輪耗時')).toBeGreaterThan(afterTurn.indexOf('toggle-tasks'))
+  expect(afterTurn.indexOf('◷ ')).toBeGreaterThan(afterTurn.indexOf('toggle-tasks'))
   expect(afterTurn).toContain('"label":"▸"')
   expect(afterTurn).not.toContain('▶ A  ')
 
@@ -316,8 +316,8 @@ test('沒有任務清單時，以本輪工具呼叫當作步驟顯示', async ($
   const drawn = await band($)
   expect(drawn).toContain('●●')
   // 執行中也在同一行，且在步驟列之前
-  expect(drawn.indexOf('執行中')).toBeGreaterThan(drawn.indexOf('toggle-tasks'))
-  expect(drawn.indexOf('執行中')).toBeLessThan(drawn.indexOf('✓ Read'))
+  expect(drawn.indexOf('⟳ ')).toBeGreaterThan(drawn.indexOf('toggle-tasks'))
+  expect(drawn.indexOf('⟳ ')).toBeLessThan(drawn.indexOf('✓ Read'))
   expect(drawn).toContain(' 2/2')
   expect(drawn).toContain(' ✗1')
   expect(drawn).toContain('✓ Read a.ts  2s')
@@ -329,8 +329,9 @@ test('沒有任務清單時，以本輪工具呼叫當作步驟顯示', async ($
   expect(after).toContain(' 2/2')
   expect(after).toContain(' ✗1')
   // 耗時與進度列同一行：在按鈕之後
-  expect(after).toContain('  上一輪耗時 2s')
-  expect(after.indexOf('上一輪耗時')).toBeGreaterThan(after.indexOf('toggle-tasks'))
+  expect(after).toContain('  ◷ 2s')
+  expect(after).not.toContain('⟳')
+  expect(after.indexOf('◷ ')).toBeGreaterThan(after.indexOf('toggle-tasks'))
   expect(after).not.toContain('✓ Read')
 
   // 新一輪重新計算
@@ -346,7 +347,7 @@ test('沒有步驟也沒有任務時，耗時單獨一行', async ($, on) => {
   await $.turn.start({ text: 'hi', turnId: 't1' })
   await $.turn.complete({ answer: '', durationMs: 1000, isAborted: false, turnId: 't1', reason: 'answer' })
   const drawn = await band($)
-  expect(drawn).toContain('上一輪耗時')
+  expect(drawn).toContain('◷ ')
   expect(drawn).not.toContain('toggle-tasks')
 })
 
@@ -450,7 +451,7 @@ test('language=en 時畫面文字為英文', { options: { language: 'en' } }, as
   expect(running.indexOf('toggle-tasks')).toBeLessThan(running.indexOf('●'))
   expect(running).toContain('"plain":true')
   expect(running).toContain('"label":"▸"')
-  expect(running).toContain('Running ')
+  expect(running).toContain('⟳ ')
   expect(running).toContain(' ✗1')
 
   await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
@@ -458,6 +459,6 @@ test('language=en 時畫面文字為英文', { options: { language: 'en' } }, as
 
   await $.turn.complete({ answer: '', durationMs: 0, isAborted: false, turnId: 't1', reason: 'answer' })
   const after = await band($)
-  expect(after).toContain('Last turn ')
+  expect(after).toContain('◷ ')
   expect(after).not.toMatch(/[\u4e00-\u9fff]/)
 })
