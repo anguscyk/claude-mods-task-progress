@@ -123,7 +123,7 @@ python3 -I scripts/make-icon.py  # 重新產生 marketplace 圖示 .claude-plugi
 
 所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。
 
-### 0.5.3（2026-10-15）
+### [0.5.3](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.5.3)（2026-10-15）
 
 - 修正：`formatDuration` 不再以 `h` 作為變數名稱（`h` 是 JSX 編譯後的元素工廠，marketplace 審核要求只用於呼叫）
 - 變更：移除 `scripts/release.sh`。它會讀取 GitHub 憑證，造成 marketplace 審核暫緩；發布腳本改放在 repo 之外

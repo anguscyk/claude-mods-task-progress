@@ -123,7 +123,7 @@ After changing how the band looks, run `scripts/gen-preview.sh` to update the pr
 
 Release notes for every version are on [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases).
 
-### 0.5.3 (2026-10-15)
+### [0.5.3](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.5.3) (2026-10-15)
 
 - Fixed: `formatDuration` no longer names a variable `h` (`h` is the JSX element factory, which the marketplace review requires to be used only as a call)
 - Changed: removed `scripts/release.sh`. It read a GitHub credential, which put the marketplace review on hold; the release script now lives outside the repository
