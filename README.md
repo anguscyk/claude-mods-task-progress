@@ -123,6 +123,10 @@ GitHub 憑證優先使用環境變數 `GITHUB_TOKEN`，否則使用 git 已存�
 
 所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。
 
+### 0.5.2（2026-10-15）
+
+- 變更：`plugin.json` 補上 `homepage`、`repository` 與 `keywords`，`userConfig` 各選項明確標示 `required: false`，欄位與社群 marketplace 的 plugin 一致
+
 ### [0.5.1](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.5.1)（2026-10-15）
 
 - 新增：失敗的 ✗ 步驟後面附上錯誤摘要：被拒絕時顯示原因，錯誤時顯示訊息第一行（Bash 單獨的 `Exit code N` 會接上下一行輸出）；摘要以灰字顯示並依剩餘寬度截斷
