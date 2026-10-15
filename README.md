@@ -93,7 +93,7 @@ scripts/gen-preview.sh         # 重新產生 docs/preview.svg 示意圖
 
 所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。
 
-### 0.3.1（2026-10-15）
+### [0.3.1](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.3.1)（2026-10-15）
 
 - 變更：收合／展開按鈕改為行首的 ▸／▾ 圖示（▸ 收合中、▾ 展開中），不再顯示文字按鈕
 - 變更：步驟計數改為不分語言的寫法：「5 步」→「4/5」（已結束／總數）、失敗數「✗1」以紅色常駐顯示、「…前面還有 N 步」→「… +N」
