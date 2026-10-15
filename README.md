@@ -93,6 +93,11 @@ scripts/gen-preview.sh         # 重新產生 docs/preview.svg 示意圖
 
 所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。
 
+### 0.3.0（2026-10-15）
+
+- 新增：`language` 設定（`zh-TW` / `en`，預設 `zh-TW`），畫面文字可切換為英文；英文版處理單複數，設定不合法時回到預設
+- 變更：畫面文字集中於訊息表，不再寫死於繪製程式
+
 ### [0.2.1](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.2.1)（2026-10-14）
 
 - 變更：`plugin.json`、`marketplace.json` 的說明，以及 `userConfig` 三個選項的標題與說明改為英文，方便社群 marketplace 的非中文使用者；畫面文字維持繁體中文
