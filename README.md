@@ -102,9 +102,20 @@ claude --plugin-dir .          # 以本資料夾載入 mod 啟動 session
 claude plugin validate .       # 檢查 manifest 與 hooks
 claude plugin test .           # 執行 tests/*.test.ts
 scripts/gen-preview.sh         # 重新產生 docs/preview.svg 與 docs/preview.en.svg 示意圖
+scripts/release.sh 0.4.3       # 發布新版本（加 --dry-run 先預覽步驟）
 ```
 
 畫面改版後執行 `scripts/gen-preview.sh` 更新示意圖（需 `claude` 與 `python3`）：情境定義在 `scripts/preview/render-scenarios.ts`，SVG 轉換在 `scripts/preview/tree2svg.py`。
+
+發布新版本：先在 `README.md` 與 `README.en.md` 的變更紀錄寫好該版本段落（標題分別為 `### 0.4.3（YYYY-MM-DD）` 與 `### 0.4.3 (YYYY-MM-DD)`），再執行 `scripts/release.sh <版本>`。腳本會依序：
+
+1. 檢查在 `main`、與 `origin/main` 同步、tag 尚不存在、兩份 README 都有該版本段落，且除了兩份 README 與 `plugin.json` 外沒有其他未提交的改動
+2. 更新 `plugin.json` 版本，執行 `claude plugin validate` 與 `claude plugin test`，commit 並 push
+3. 打 `v<版本>` tag 並 push
+4. 建立 GitHub Release（中英並列，內容取自兩份 README 的該版本段落，並設為 Latest）
+5. 把兩份 README 的版本標題補成 Release 連結，commit 並 push
+
+GitHub 憑證優先使用環境變數 `GITHUB_TOKEN`，否則使用 git 已存的 github.com 憑證（如 macOS 鑰匙圈）；憑證不會輸出或寫入檔案。
 
 ## 變更紀錄
 
