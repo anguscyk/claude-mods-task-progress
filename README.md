@@ -124,6 +124,10 @@ scripts/gen-preview.sh         # 重新產生 docs/preview.svg 與 docs/preview.
 
 所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。
 
+### 0.5.5（2026-10-15）
+
+- 開發：新增 `CLAUDE.md`，說明開發指令、架構、marketplace 審核限制與發布流程，供 Claude Code 在本 repo 工作時參考
+
 ### [0.5.4](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.5.4)（2026-10-15）
 
 - 文件：開發段落註明發布流程與圖示產生使用維護者本機的工具，不納入版本控制
