@@ -122,6 +122,14 @@ The GitHub credential comes from the `GITHUB_TOKEN` environment variable, or els
 
 Release notes for every version are on [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases).
 
+### 0.5.0 (2026-10-15)
+
+- Changed: Bash steps show their description without the "Bash " prefix; Read, Edit and other tools keep their names (a file name alone does not say what was done)
+- Changed: names are cut by terminal display width (CJK characters take 2 columns) and fitted to the terminal so rows do not wrap; `nameMax` now counts columns, and its default went from 40 to 80 (still about 40 CJK characters)
+- Changed: durations in the expanded list line up in one column; anything under a second shows `<1s` instead of a column of `0s`
+- Development: added `scripts/release.sh`, which sets the version, tags, creates a bilingual GitHub Release and links the README headings in one go
+- Fixed: `scripts/release.sh` matches changelog headings only at the start of a line, so the same words in README body text are neither mistaken for a heading nor rewritten
+
 ### [0.4.2](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.4.2) (2026-10-15)
 
 - Docs: added an English-task-name preview, `docs/preview.en.svg`; `scripts/gen-preview.sh` now generates both the Chinese and English previews

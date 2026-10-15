@@ -122,6 +122,14 @@ GitHub 憑證優先使用環境變數 `GITHUB_TOKEN`，否則使用 git 已存�
 
 所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。
 
+### 0.5.0（2026-10-15）
+
+- 變更：Bash 步驟直接顯示說明，不再加「Bash 」前綴；Read、Edit 等工具保留名稱（只看檔名分不出動作）
+- 變更：名稱截斷改依終端機顯示寬度（中文字佔 2 格），並配合終端機寬度自動收窄、避免換行；`nameMax` 改以格數計，預設由 40 改為 80（中文仍約 40 字）
+- 變更：展開列表的耗時對齊成一欄；不到 1 秒顯示 `<1s`，取代整排 `0s`
+- 開發：新增 `scripts/release.sh`，一次完成改版本、打 tag、建立中英並列的 GitHub Release 與補 README 連結
+- 修正：`scripts/release.sh` 只比對行首的變更紀錄標題，避免 README 內文出現同樣字樣時誤判或改壞內文
+
 ### [0.4.2](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.4.2)（2026-10-15）
 
 - 文件：新增英文任務名稱的示意圖 `docs/preview.en.svg`；`scripts/gen-preview.sh` 一次產生中、英文兩張示意圖
