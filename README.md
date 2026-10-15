@@ -110,6 +110,11 @@ scripts/gen-preview.sh         # 重新產生 docs/preview.svg 與 docs/preview.
 
 所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。
 
+### 0.4.2（2026-10-15）
+
+- 文件：新增英文任務名稱的示意圖 `docs/preview.en.svg`；`scripts/gen-preview.sh` 一次產生中、英文兩張示意圖
+- 文件：新增英文版 README（`README.en.md`），兩份 README 開頭互相連結；中文 README 移除重複的英文簡介
+
 ### [0.4.1](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.4.1)（2026-10-15）
 
 - 文件：示意圖（`docs/preview.svg`）新增任務超過 8 個的兩個畫面：收合時的「✓6/10 · 最近完成的任務」，以及展開時較早完成的任務摺疊成「… +3 ✓」
