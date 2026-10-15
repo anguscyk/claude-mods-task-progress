@@ -6,7 +6,7 @@
 
 A Claude Code mod that shows a progress band above the prompt: a task progress bar with each task's duration, or the turn's tool calls as steps when there is no task list, plus the elapsed time of the current or last turn. The band uses language-neutral symbols, so it reads the same in any language.
 
-![task-progress preview](docs/preview.svg)
+![task-progress preview](docs/preview.en.svg)
 
 > The preview is generated from what the mod actually draws (with simulated tasks and steps in the test environment); it is not a real terminal screenshot. Task and step names come from Claude, so they appear in whatever language the conversation uses.
 
@@ -101,7 +101,7 @@ Invalid values fall back to the defaults; decimals are rounded down.
 claude --plugin-dir .          # start a session with the mod loaded from this folder
 claude plugin validate .       # check the manifest and hooks
 claude plugin test .           # run tests/*.test.ts
-scripts/gen-preview.sh         # regenerate the docs/preview.svg preview
+scripts/gen-preview.sh         # regenerate docs/preview.svg and docs/preview.en.svg
 ```
 
 After changing how the band looks, run `scripts/gen-preview.sh` to update the preview (requires `claude` and `python3`): the scenarios are in `scripts/preview/render-scenarios.ts` and the SVG conversion in `scripts/preview/tree2svg.py`.

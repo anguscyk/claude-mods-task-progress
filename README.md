@@ -101,7 +101,7 @@ claude plugin install task-progress --marketplace anguscyk/claude-mods-task-prog
 claude --plugin-dir .          # 以本資料夾載入 mod 啟動 session
 claude plugin validate .       # 檢查 manifest 與 hooks
 claude plugin test .           # 執行 tests/*.test.ts
-scripts/gen-preview.sh         # 重新產生 docs/preview.svg 示意圖
+scripts/gen-preview.sh         # 重新產生 docs/preview.svg 與 docs/preview.en.svg 示意圖
 ```
 
 畫面改版後執行 `scripts/gen-preview.sh` 更新示意圖（需 `claude` 與 `python3`）：情境定義在 `scripts/preview/render-scenarios.ts`，SVG 轉換在 `scripts/preview/tree2svg.py`。
