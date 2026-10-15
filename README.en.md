@@ -126,7 +126,7 @@ Project instructions for Claude Code are in `.claude/CLAUDE.md`.
 
 Release notes for every version are on [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases).
 
-### 0.5.6 (2026-10-15)
+### [0.5.6](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.5.6) (2026-10-15)
 
 - Development: moved `CLAUDE.md` to `.claude/CLAUDE.md`, which clears the `claude plugin validate` warning about a `CLAUDE.md` at the plugin root; Claude Code still loads it as project instructions in this repo
 - Docs: the development section notes that the project instructions are in `.claude/CLAUDE.md`
