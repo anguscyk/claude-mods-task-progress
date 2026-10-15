@@ -123,6 +123,13 @@ After changing how the band looks, run `scripts/gen-preview.sh` to update the pr
 
 Release notes for every version are on [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases).
 
+### 0.5.3 (2026-10-15)
+
+- Fixed: `formatDuration` no longer names a variable `h` (`h` is the JSX element factory, which the marketplace review requires to be used only as a call)
+- Changed: removed `scripts/release.sh`. It read a GitHub credential, which put the marketplace review on hold; the release script now lives outside the repository
+- Added: the marketplace icon `.claude-plugin/icon.png` and its generator `scripts/make-icon.py`
+- Docs: the README gained a "How it works" section explaining that the hooks only observe — they never change or block tool calls — and that no data leaves the machine
+
 ### [0.5.2](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.5.2) (2026-10-15)
 
 - Changed: `plugin.json` gained `homepage`, `repository` and `keywords`, and each `userConfig` option is marked `required: false`, matching the plugins in the community marketplace

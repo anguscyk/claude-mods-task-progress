@@ -1,6 +1,6 @@
 {
   "name": "task-progress",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Shows a progress band above the prompt: a task progress bar with per-task durations, or the turn's tool calls as steps when there is no task list, plus elapsed time. Collapsed by default; press to expand.",
   "author": {
     "name": "anguscyk"
