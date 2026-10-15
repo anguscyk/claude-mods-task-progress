@@ -122,7 +122,7 @@ The GitHub credential comes from the `GITHUB_TOKEN` environment variable, or els
 
 Release notes for every version are on [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases).
 
-### 0.5.0 (2026-10-15)
+### [0.5.0](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.5.0) (2026-10-15)
 
 - Changed: Bash steps show their description without the "Bash " prefix; Read, Edit and other tools keep their names (a file name alone does not say what was done)
 - Changed: names are cut by terminal display width (CJK characters take 2 columns) and fitted to the terminal so rows do not wrap; `nameMax` now counts columns, and its default went from 40 to 80 (still about 40 CJK characters)

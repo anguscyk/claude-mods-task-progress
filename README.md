@@ -122,7 +122,7 @@ GitHub 憑證優先使用環境變數 `GITHUB_TOKEN`，否則使用 git 已存�
 
 所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。
 
-### 0.5.0（2026-10-15）
+### [0.5.0](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.5.0)（2026-10-15）
 
 - 變更：Bash 步驟直接顯示說明，不再加「Bash 」前綴；Read、Edit 等工具保留名稱（只看檔名分不出動作）
 - 變更：名稱截斷改依終端機顯示寬度（中文字佔 2 格），並配合終端機寬度自動收窄、避免換行；`nameMax` 改以格數計，預設由 40 改為 80（中文仍約 40 字）
