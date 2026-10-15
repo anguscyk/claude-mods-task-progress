@@ -104,15 +104,13 @@ export const doneCount = (done: number, total: number): string => `✓${done}/${
 export const runningTime = (elapsed: string): string => `⟳ ${elapsed}`
 export const lastTurnTime = (elapsed: string): string => `◷ ${elapsed}`
 
-export type Lang = 'zh-TW' | 'en'
-
 /** 收合摘要中最近完成的任務（不分語言），例如「 · 建立 DTO」 */
 export const latestDone = (name: string): string => ` · ${name}`
 
 /** 摺疊的已完成任務數（不分語言），例如「… +3 ✓」 */
 export const moreDone = (n: number): string => `… +${n} ✓`
 
-export type Settings = { nameMax: number; foldThreshold: number; keepDone: number; language: Lang }
+export type Settings = { nameMax: number; foldThreshold: number; keepDone: number }
 
 /** 解析 userConfig 的所有選項 */
 export function settingsFrom(options: PluginOptions): Settings {
@@ -120,7 +118,6 @@ export function settingsFrom(options: PluginOptions): Settings {
     nameMax: intOption(options, 'nameMax', DEFAULT_NAME_MAX, 1),
     foldThreshold: intOption(options, 'foldThreshold', DEFAULT_FOLD_THRESHOLD, 1),
     keepDone: intOption(options, 'keepDone', DEFAULT_KEEP_DONE, 0),
-    language: options.language === 'en' ? 'en' : 'zh-TW',
   }
 }
 

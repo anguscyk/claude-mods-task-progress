@@ -213,10 +213,10 @@ test('展開列表的任務名稱超過 nameMax 時截斷', { options: { nameMax
 })
 
 test('userConfig 不合法時回預設值', () => {
-  expect(settingsFrom({})).toEqual({ nameMax: 40, foldThreshold: 8, keepDone: 3, language: 'zh-TW' })
-  expect(settingsFrom({ nameMax: 0, foldThreshold: 0, keepDone: -1 })).toEqual({ nameMax: 40, foldThreshold: 8, keepDone: 3, language: 'zh-TW' })
-  expect(settingsFrom({ nameMax: 'x', foldThreshold: '5', keepDone: true })).toEqual({ nameMax: 40, foldThreshold: 8, keepDone: 3, language: 'zh-TW' })
-  expect(settingsFrom({ nameMax: 8.7, foldThreshold: 4.2, keepDone: 0, language: 'zh-TW' })).toEqual({ nameMax: 8, foldThreshold: 4, keepDone: 0, language: 'zh-TW' })
+  expect(settingsFrom({})).toEqual({ nameMax: 40, foldThreshold: 8, keepDone: 3 })
+  expect(settingsFrom({ nameMax: 0, foldThreshold: 0, keepDone: -1 })).toEqual({ nameMax: 40, foldThreshold: 8, keepDone: 3 })
+  expect(settingsFrom({ nameMax: 'x', foldThreshold: '5', keepDone: true })).toEqual({ nameMax: 40, foldThreshold: 8, keepDone: 3 })
+  expect(settingsFrom({ nameMax: 8.7, foldThreshold: 4.2, keepDone: 0 })).toEqual({ nameMax: 8, foldThreshold: 4, keepDone: 0 })
 })
 
 test('自訂摺疊門檻與保留筆數', () => {
@@ -419,12 +419,6 @@ test('步驟列表收合時，進度列顯示執行中的步驟', async ($, on) 
   expect(count(await band($))).toBe(0)
 })
 
-test('language 選項：不合法值回預設 zh-TW', () => {
-  expect(settingsFrom({ language: 'en' }).language).toBe('en')
-  expect(settingsFrom({ language: 'fr' }).language).toBe('zh-TW')
-  expect(settingsFrom({}).language).toBe('zh-TW')
-})
-
 test('收合摘要不分語言', () => {
   const list: Task[] = [
     { id: '1', subject: 'Build DTO', status: 'completed', endedAt: 2 },
@@ -433,7 +427,7 @@ test('收合摘要不分語言', () => {
   expect(collapsedSummary(list, 40)).toBe('✓1/2 · Build DTO')
 })
 
-test('language=en 時畫面文字為英文', { options: { language: 'en' } }, async ($, on) => {
+test('畫面只用不分語言的符號（無中文字）', async ($, on) => {
   mock.clock(on)
   answerBelow(on)
   on('turn.start', (_$, e) => ({ turnId: e.turnId }))

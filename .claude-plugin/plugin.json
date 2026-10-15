@@ -1,6 +1,6 @@
 {
   "name": "task-progress",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "Shows a progress band above the prompt: a task progress bar with per-task durations, or the turn's tool calls as steps when there is no task list, plus elapsed time. Collapsed by default; press to expand.",
   "author": {
     "name": "anguscyk"
@@ -31,16 +31,6 @@
       "default": 3,
       "min": 0,
       "max": 200
-    },
-    "language": {
-      "type": "string",
-      "title": "Language",
-      "description": "Language of the band's text: zh-TW (Traditional Chinese) or en (English).",
-      "default": "zh-TW",
-      "options": [
-        "zh-TW",
-        "en"
-      ]
     }
   }
 }
