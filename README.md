@@ -93,7 +93,7 @@ scripts/gen-preview.sh         # 重新產生 docs/preview.svg 示意圖
 
 所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。
 
-### 0.3.2（2026-10-15）
+### [0.3.2](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.3.2)（2026-10-15）
 
 - 變更：執行時間改用不分語言的符號：「執行中 42s」→「⟳ 42s」、「上一輪耗時 42s」→「◷ 42s」（不採用 ⏲／⏱，因屬 emoji，部分終端機會以彩色寬字元顯示而跑版）
 - 變更：收合／展開按鈕改為行首的 `[ + ]`／`[ - ]`：使用引擎的按鈕外框搭配純 ASCII，取代 0.3.1 的 ▸／▾；特殊符號在部分字型會以很小的替代字形顯示而不易辨識
