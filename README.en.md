@@ -67,6 +67,16 @@ Collapsed automatically when the turn ends:
 - **Aligned durations**: durations in the expanded list line up in one column, and anything under a second shows `<1s`; Bash steps show their description without the tool name
 - **Error summary**: a failed ✗ step is followed by the refusal reason or the first line of the error (a bare Bash `Exit code N` is joined with the next line of output)
 
+## How it works
+
+task-progress only reads; it never changes what Claude does:
+
+- `tool.call`: observes each tool call in the main conversation and records its name, duration and outcome (with an error summary). Every call passes through unchanged: its input is not modified, it is never blocked, and its result is not rewritten. `TaskCreate` / `TaskUpdate` / `TodoWrite` are also used to follow the task list
+- `turn.start` / `turn.complete` / `prompt.submit`: time the turn, reset the steps and collapse the band each turn
+- `ui.render` (`AbovePrompt`): draws the band above the prompt, keeping whatever other mods draw in the same place
+
+All data stays in the local session state and is never sent anywhere.
+
 ## Install
 
 At the Claude Code prompt in a terminal:
@@ -104,20 +114,10 @@ claude --plugin-dir .          # start a session with the mod loaded from this f
 claude plugin validate .       # check the manifest and hooks
 claude plugin test .           # run tests/*.test.ts
 scripts/gen-preview.sh         # regenerate docs/preview.svg and docs/preview.en.svg
-scripts/release.sh X.Y.Z       # publish a new version (add --dry-run to preview the steps)
+python3 -I scripts/make-icon.py  # regenerate the marketplace icon .claude-plugin/icon.png
 ```
 
 After changing how the band looks, run `scripts/gen-preview.sh` to update the preview (requires `claude` and `python3`): the scenarios are in `scripts/preview/render-scenarios.ts` and the SVG conversion in `scripts/preview/tree2svg.py`.
-
-To publish a new version, first write its changelog section in both `README.md` and `README.en.md` (headings `### X.Y.Z（YYYY-MM-DD）` and `### X.Y.Z (YYYY-MM-DD)`), then run `scripts/release.sh <version>`. The script:
-
-1. Checks that you are on `main` in sync with `origin/main`, the tag does not exist yet, both READMEs have the version's section, and nothing besides the two READMEs and `plugin.json` is uncommitted
-2. Sets the version in `plugin.json`, runs `claude plugin validate` and `claude plugin test`, then commits and pushes
-3. Creates and pushes the `v<version>` tag
-4. Creates the GitHub Release (Chinese and English side by side, taken from the two READMEs' sections, marked Latest)
-5. Turns the version headings in both READMEs into Release links, then commits and pushes
-
-The GitHub credential comes from the `GITHUB_TOKEN` environment variable, or else from git's stored github.com credential (such as the macOS keychain); it is never printed or written to a file.
 
 ## Changelog
 

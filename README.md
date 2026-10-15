@@ -67,6 +67,16 @@ Claude Code mod：在提示列上方顯示任務進度條、每個任務的耗�
 - **耗時對齊**：展開列表的耗時對齊成一欄，不到 1 秒顯示 `<1s`；Bash 步驟直接顯示說明，不加工具名稱
 - **錯誤摘要**：失敗的 ✗ 步驟後面附上被拒絕的原因或錯誤訊息第一行（Bash 的 `Exit code N` 會接上下一行輸出）
 
+## 運作方式
+
+task-progress 只讀取資訊、不改變 Claude 的行為：
+
+- `tool.call`：觀察主對話的每個工具呼叫，記錄名稱、耗時與成敗（含錯誤摘要）。呼叫一律原樣放行，不修改輸入、不攔截、不改寫結果；`TaskCreate`／`TaskUpdate`／`TodoWrite` 另用來追蹤任務清單
+- `turn.start`／`turn.complete`／`prompt.submit`：計算本輪耗時、每輪重設步驟並自動收合
+- `ui.render`（`AbovePrompt`）：在提示列上方繪製進度區塊，並保留其他 mod 在同一位置繪製的內容
+
+所有資料只存在本機 session 狀態中，不會傳送到任何地方。
+
 ## 安裝
 
 在終端機的 Claude Code 提示列輸入：
@@ -104,20 +114,10 @@ claude --plugin-dir .          # 以本資料夾載入 mod 啟動 session
 claude plugin validate .       # 檢查 manifest 與 hooks
 claude plugin test .           # 執行 tests/*.test.ts
 scripts/gen-preview.sh         # 重新產生 docs/preview.svg 與 docs/preview.en.svg 示意圖
-scripts/release.sh X.Y.Z       # 發布新版本（加 --dry-run 先預覽步驟）
+python3 -I scripts/make-icon.py  # 重新產生 marketplace 圖示 .claude-plugin/icon.png
 ```
 
 畫面改版後執行 `scripts/gen-preview.sh` 更新示意圖（需 `claude` 與 `python3`）：情境定義在 `scripts/preview/render-scenarios.ts`，SVG 轉換在 `scripts/preview/tree2svg.py`。
-
-發布新版本：先在 `README.md` 與 `README.en.md` 的變更紀錄寫好該版本段落（標題分別為 `### X.Y.Z（YYYY-MM-DD）` 與 `### X.Y.Z (YYYY-MM-DD)`），再執行 `scripts/release.sh <版本>`。腳本會依序：
-
-1. 檢查在 `main`、與 `origin/main` 同步、tag 尚不存在、兩份 README 都有該版本段落，且除了兩份 README 與 `plugin.json` 外沒有其他未提交的改動
-2. 更新 `plugin.json` 版本，執行 `claude plugin validate` 與 `claude plugin test`，commit 並 push
-3. 打 `v<版本>` tag 並 push
-4. 建立 GitHub Release（中英並列，內容取自兩份 README 的該版本段落，並設為 Latest）
-5. 把兩份 README 的版本標題補成 Release 連結，commit 並 push
-
-GitHub 憑證優先使用環境變數 `GITHUB_TOKEN`，否則使用 git 已存的 github.com 憑證（如 macOS 鑰匙圈）；憑證不會輸出或寫入檔案。
 
 ## 變更紀錄
 

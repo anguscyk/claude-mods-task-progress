@@ -25,12 +25,14 @@ export function formatDuration(ms: number): string {
   // 不到 1 秒顯示 <1s：避免整排 0s 佔位置又沒有資訊
   if (ms < 1000) return '<1s'
   const total = Math.floor(ms / 1000)
-  const h = Math.floor(total / 3600)
-  const m = Math.floor((total % 3600) / 60)
-  const s = total % 60
-  if (h > 0) return `${h}h${String(m).padStart(2, '0')}m${String(s).padStart(2, '0')}s`
-  if (m > 0) return `${m}m${String(s).padStart(2, '0')}s`
-  return `${s}s`
+  // 不用 h 當變數名稱：h 是 JSX 編譯後的元素工廠函式，審核端要求這個名稱只用於呼叫
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  const seconds = total % 60
+  const pad = (n: number): string => String(n).padStart(2, '0')
+  if (hours > 0) return `${hours}h${pad(minutes)}m${pad(seconds)}s`
+  if (minutes > 0) return `${minutes}m${pad(seconds)}s`
+  return `${seconds}s`
 }
 
 export function bar(done: number, total: number): string {
