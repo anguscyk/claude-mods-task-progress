@@ -110,7 +110,7 @@ After changing how the band looks, run `scripts/gen-preview.sh` to update the pr
 
 Release notes for every version are on [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases).
 
-### 0.4.2 (2026-10-15)
+### [0.4.2](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.4.2) (2026-10-15)
 
 - Docs: added an English-task-name preview, `docs/preview.en.svg`; `scripts/gen-preview.sh` now generates both the Chinese and English previews
 - Docs: added an English README (`README.en.md`), with the two READMEs linking to each other; removed the duplicated English introduction from the Chinese README
