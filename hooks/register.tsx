@@ -84,8 +84,12 @@ function intOption(options: PluginOptions, key: string, fallback: number, min: n
   return typeof v === 'number' && Number.isFinite(v) && v >= min ? Math.floor(v) : fallback
 }
 
-/** 收合／展開按鈕圖示：▸ 目前收合（按下展開）、▾ 目前展開（按下收合） */
-export const TOGGLE_ICON = { collapsed: '▸', expanded: '▾' } as const
+/**
+ * 收合／展開按鈕文字：+ 目前收合（按下展開）、- 目前展開（按下收合）。
+ * 使用引擎的按鈕外框（終端機畫成 [ + ]）搭配純 ASCII：特殊符號（▸、⊞ 等）在部分字型會
+ * 以很小的替代字形顯示而不易辨識，ASCII 在任何字型都完整顯示，外框也讓它一看就是按鈕。
+ */
+export const TOGGLE_ICON = { collapsed: '+', expanded: '-' } as const
 
 /** 進行中項目（不分語言），例如「▶ Running tests」 */
 export const inProgress = (name: string): string => `▶ ${name}`
@@ -353,7 +357,6 @@ export const register: Register = (on, options) => {
             <Box>
               <Button
                 key="toggle-tasks"
-                plain
                 label={stepsCollapsed ? TOGGLE_ICON.collapsed : TOGGLE_ICON.expanded}
                 onPress={() => update($, collapseOverride, () => !stepsCollapsed)}
               />
@@ -392,7 +395,6 @@ export const register: Register = (on, options) => {
           <Box>
             <Button
               key="toggle-tasks"
-              plain
               label={collapsed ? TOGGLE_ICON.collapsed : TOGGLE_ICON.expanded}
               onPress={() => update($, collapseOverride, () => !collapsed)}
             />
