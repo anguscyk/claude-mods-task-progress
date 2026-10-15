@@ -114,7 +114,6 @@ claude --plugin-dir .          # 以本資料夾載入 mod 啟動 session
 claude plugin validate .       # 檢查 manifest 與 hooks
 claude plugin test .           # 執行 tests/*.test.ts
 scripts/gen-preview.sh         # 重新產生 docs/preview.svg 與 docs/preview.en.svg 示意圖
-python3 -I scripts/make-icon.py  # 重新產生 marketplace 圖示 .claude-plugin/icon.png
 ```
 
 畫面改版後執行 `scripts/gen-preview.sh` 更新示意圖（需 `claude` 與 `python3`）：情境定義在 `scripts/preview/render-scenarios.ts`，SVG 轉換在 `scripts/preview/tree2svg.py`。
@@ -127,7 +126,7 @@ python3 -I scripts/make-icon.py  # 重新產生 marketplace 圖示 .claude-plugi
 
 - 修正：`formatDuration` 不再以 `h` 作為變數名稱（`h` 是 JSX 編譯後的元素工廠，marketplace 審核要求只用於呼叫）
 - 變更：移除 `scripts/release.sh`。它會讀取 GitHub 憑證，造成 marketplace 審核暫緩；發布腳本改放在 repo 之外
-- 新增：marketplace 圖示 `.claude-plugin/icon.png` 與產生腳本 `scripts/make-icon.py`
+- 新增：marketplace 圖示
 - 文件：README 新增「運作方式」，說明各 hook 只觀察、不修改或攔截工具呼叫，資料不離開本機
 
 ### [0.5.2](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.5.2)（2026-10-15）
