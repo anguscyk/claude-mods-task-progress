@@ -123,7 +123,7 @@ GitHub 憑證優先使用環境變數 `GITHUB_TOKEN`，否則使用 git 已存�
 
 所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。
 
-### 0.5.2（2026-10-15）
+### [0.5.2](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.5.2)（2026-10-15）
 
 - 變更：`plugin.json` 補上 `homepage`、`repository` 與 `keywords`，`userConfig` 各選項明確標示 `required: false`，欄位與社群 marketplace 的 plugin 一致
 

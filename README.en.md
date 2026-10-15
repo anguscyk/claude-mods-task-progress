@@ -123,7 +123,7 @@ The GitHub credential comes from the `GITHUB_TOKEN` environment variable, or els
 
 Release notes for every version are on [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases).
 
-### 0.5.2 (2026-10-15)
+### [0.5.2](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.5.2) (2026-10-15)
 
 - Changed: `plugin.json` gained `homepage`, `repository` and `keywords`, and each `userConfig` option is marked `required: false`, matching the plugins in the community marketplace
 
