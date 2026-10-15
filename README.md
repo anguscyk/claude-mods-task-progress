@@ -118,6 +118,8 @@ scripts/gen-preview.sh         # 重新產生 docs/preview.svg 與 docs/preview.
 
 畫面改版後執行 `scripts/gen-preview.sh` 更新示意圖（需 `claude` 與 `python3`）：情境定義在 `scripts/preview/render-scenarios.ts`，SVG 轉換在 `scripts/preview/tree2svg.py`。
 
+發布流程與圖示產生使用維護者本機的工具，不納入版本控制。
+
 ## 變更紀錄
 
 所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。

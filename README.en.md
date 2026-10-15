@@ -118,6 +118,8 @@ scripts/gen-preview.sh         # regenerate docs/preview.svg and docs/preview.en
 
 After changing how the band looks, run `scripts/gen-preview.sh` to update the preview (requires `claude` and `python3`): the scenarios are in `scripts/preview/render-scenarios.ts` and the SVG conversion in `scripts/preview/tree2svg.py`.
 
+Releases and the icon are produced with the maintainer's local tools, which are not under version control.
+
 ## Changelog
 
 Release notes for every version are on [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases).
