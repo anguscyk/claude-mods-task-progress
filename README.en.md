@@ -123,7 +123,7 @@ The GitHub credential comes from the `GITHUB_TOKEN` environment variable, or els
 
 Release notes for every version are on [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases).
 
-### 0.5.1 (2026-10-15)
+### [0.5.1](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.5.1) (2026-10-15)
 
 - Added: a failed ✗ step is followed by an error summary: the refusal reason, or the first line of the error (a bare Bash `Exit code N` is joined with the next line of output); the summary is dimmed and cut to the room left on the row
 - Docs: the failed step in the preview and the README examples now shows a real error message
