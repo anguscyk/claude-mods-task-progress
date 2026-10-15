@@ -124,7 +124,7 @@ Releases and the icon are produced with the maintainer's local tools, which are 
 
 Release notes for every version are on [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases).
 
-### 0.5.5 (2026-10-15)
+### [0.5.5](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.5.5) (2026-10-15)
 
 - Development: added `CLAUDE.md` describing the development commands, architecture, marketplace review constraints and release process, for Claude Code to reference when working in this repo
 
