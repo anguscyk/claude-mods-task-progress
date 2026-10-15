@@ -124,7 +124,7 @@ scripts/gen-preview.sh         # 重新產生 docs/preview.svg 與 docs/preview.
 
 所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。
 
-### 0.5.4（2026-10-15）
+### [0.5.4](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.5.4)（2026-10-15）
 
 - 文件：開發段落註明發布流程與圖示產生使用維護者本機的工具，不納入版本控制
 - 開發：發布腳本與圖示產生腳本改以 `.gitignore` 排除；README 不再寫出圖示檔路徑（marketplace 審核會把文字中指名的圖片路徑視為可能被執行）

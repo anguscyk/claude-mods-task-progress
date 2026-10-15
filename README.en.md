@@ -124,7 +124,7 @@ Releases and the icon are produced with the maintainer's local tools, which are 
 
 Release notes for every version are on [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases).
 
-### 0.5.4 (2026-10-15)
+### [0.5.4](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.5.4) (2026-10-15)
 
 - Docs: the development section notes that releases and the icon are produced with the maintainer's local tools, which are not under version control
 - Development: the release and icon scripts are excluded with `.gitignore`; the README no longer names the icon file's path (the marketplace review treats an image path named in text as something that might be run)
