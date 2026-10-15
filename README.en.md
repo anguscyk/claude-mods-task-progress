@@ -102,12 +102,12 @@ claude --plugin-dir .          # start a session with the mod loaded from this f
 claude plugin validate .       # check the manifest and hooks
 claude plugin test .           # run tests/*.test.ts
 scripts/gen-preview.sh         # regenerate docs/preview.svg and docs/preview.en.svg
-scripts/release.sh 0.4.3       # publish a new version (add --dry-run to preview the steps)
+scripts/release.sh X.Y.Z       # publish a new version (add --dry-run to preview the steps)
 ```
 
 After changing how the band looks, run `scripts/gen-preview.sh` to update the preview (requires `claude` and `python3`): the scenarios are in `scripts/preview/render-scenarios.ts` and the SVG conversion in `scripts/preview/tree2svg.py`.
 
-To publish a new version, first write its changelog section in both `README.md` and `README.en.md` (headings `### 0.4.3（YYYY-MM-DD）` and `### 0.4.3 (YYYY-MM-DD)`), then run `scripts/release.sh <version>`. The script:
+To publish a new version, first write its changelog section in both `README.md` and `README.en.md` (headings `### X.Y.Z（YYYY-MM-DD）` and `### X.Y.Z (YYYY-MM-DD)`), then run `scripts/release.sh <version>`. The script:
 
 1. Checks that you are on `main` in sync with `origin/main`, the tag does not exist yet, both READMEs have the version's section, and nothing besides the two READMEs and `plugin.json` is uncommitted
 2. Sets the version in `plugin.json`, runs `claude plugin validate` and `claude plugin test`, then commits and pushes

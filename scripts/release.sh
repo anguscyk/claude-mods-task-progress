@@ -3,11 +3,11 @@
 # → 把兩份 README 的版本標題補成 Release 連結並 commit/push。
 #
 # 用法：scripts/release.sh <版本> [--dry-run]
-#   例：scripts/release.sh 0.4.3
+#   例：scripts/release.sh 1.2.3
 #
 # 事前準備：先在 README.md 與 README.en.md 的「變更紀錄／Changelog」寫好該版本段落，標題格式為
-#   README.md     ### 0.4.3（2026-10-15）
-#   README.en.md  ### 0.4.3 (2026-10-15)
+#   README.md     ### X.Y.Z（YYYY-MM-DD）
+#   README.en.md  ### X.Y.Z (YYYY-MM-DD)
 # 段落可以尚未 commit；除了這兩份 README 與 plugin.json，工作區不可有其他未提交的改動。
 #
 # GitHub 憑證：優先使用環境變數 GITHUB_TOKEN，否則向 git credential（如 macOS 鑰匙圈）取 github.com 的憑證。
@@ -59,8 +59,10 @@ ${OTHER_CHANGES}"
 
 ZH_HEADING_PREFIX="### ${VERSION}（"
 EN_HEADING_PREFIX="### ${VERSION} ("
-grep -q -F "${ZH_HEADING_PREFIX}" README.md || die "README.md 找不到「${ZH_HEADING_PREFIX}…）」變更紀錄段落"
-grep -q -F "${EN_HEADING_PREFIX}" README.en.md || die "README.en.md 找不到「${EN_HEADING_PREFIX}…)」變更紀錄段落"
+# 只認行首的標題：README 內文（例如開發段落的說明）也可能出現同樣字樣
+has_heading() { awk -v h="$2" 'index($0, h) == 1 { found = 1 } END { exit !found }' "$1"; }
+has_heading README.md "${ZH_HEADING_PREFIX}" || die "README.md 找不到「${ZH_HEADING_PREFIX}…）」變更紀錄段落"
+has_heading README.en.md "${EN_HEADING_PREFIX}" || die "README.en.md 找不到「${EN_HEADING_PREFIX}…)」變更紀錄段落"
 
 # 取出某份 README 指定標題下的條列內容（到下一個標題為止）
 section() {
@@ -123,17 +125,19 @@ TOKEN=""
 
 # ---- 4. README 標題補上 Release 連結，commit、push ----
 run python3 -I - "${ROOT}" "${VERSION}" "${RELEASE_URL}" <<'PY'
-import sys
+import re, sys
 root, version, url = sys.argv[1:4]
 for name, prefix in (('README.md', f'### {version}（'), ('README.en.md', f'### {version} (')):
     path = f'{root}/{name}'
     with open(path, encoding='utf-8') as f:
         text = f.read()
     linked = f'### [{version}]({url})' + prefix[len(f'### {version}'):]
-    if text.count(prefix) != 1:
+    # 只替換行首的標題，不動內文中出現的同樣字樣
+    pattern = re.compile('^' + re.escape(prefix), re.MULTILINE)
+    if len(pattern.findall(text)) != 1:
         sys.exit(f'{name}: 找不到唯一的 {prefix} 標題')
     with open(path, 'w', encoding='utf-8') as f:
-        f.write(text.replace(prefix, linked))
+        f.write(pattern.sub(lambda _: linked, text))
 PY
 run git add README.md README.en.md
 run git commit -q -m "docs: 兩份 README 的 ${VERSION} 標題補上 Release 連結"
