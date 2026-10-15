@@ -43,6 +43,8 @@ COLORS = {None: '#d4d4d4', 'dim': '#7f848e', 'green': '#73c991', 'yellow': '#e5c
 CW, LH, PAD = 8.4, 20, 16
 panels = [
     ('有任務清單（手動展開）', 'tasks-expanded'),
+    ('任務超過 8 個：預設收合，顯示已完成數與最近完成的任務', 'tasks-many-collapsed'),
+    ('任務超過 8 個：手動展開，較早完成的任務摺疊', 'tasks-many-expanded'),
     ('沒有任務清單：步驟列表執行中（預設收合）', 'steps-collapsed-running'),
     ('步驟列表手動展開', 'steps-expanded'),
     ('一輪結束後自動收合', 'steps-after-turn'),

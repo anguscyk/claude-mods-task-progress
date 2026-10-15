@@ -71,3 +71,34 @@ test('steps', async ($, on) => {
   await $.turn.complete({ answer: '', durationMs: 0, isAborted: false, turnId: 't1', reason: 'answer' })
   await dump($, 'steps-after-turn')
 })
+
+test('tasks-many', async ($, on) => {
+  const clock = mock.clock(on)
+  on('ui.render', { component: 'AbovePrompt' }, () => ({ type: 'Text', children: [''] }) as never)
+  on('turn.start', (_$, e) => ({ turnId: e.turnId }))
+  on('session.start', (_$, e) => ({ cwd: e.cwd }))
+  let n = 0
+  on('tool.call', { tool: 'TaskCreate' }, (_$, e) => ({ result: { task: { id: String(++n), subject: e.subject } } }))
+  on('tool.call', { tool: 'TaskUpdate' }, (_$, e) => ({ result: { success: true, taskId: e.taskId, updatedFields: ['status'] } }))
+  await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  const subjects = [
+    '建立 Entity', '建立 Repository', '建立 DTO', '撰寫 Service',
+    '撰寫 Controller', '補上驗證', '撰寫單元測試', '執行整合測試', '更新 API 文件', '更新 README',
+  ]
+  for (const s of subjects) {
+    await $.tool.call({ tool: 'TaskCreate', subject: s, description: s, activeForm: s === '撰寫單元測試' ? 'Writing unit tests' : s })
+  }
+  // 前 6 項依序完成（超過 8 個任務時，只留最近 3 筆已完成，其餘摺疊）
+  const durations = [41_000, 37_000, 52_000, 128_000, 96_000, 33_000]
+  for (const [i, ms] of durations.entries()) {
+    await $.tool.call({ tool: 'TaskUpdate', taskId: String(i + 1), status: 'in_progress' })
+    await clock.advance(ms)
+    await $.tool.call({ tool: 'TaskUpdate', taskId: String(i + 1), status: 'completed' })
+  }
+  await $.tool.call({ tool: 'TaskUpdate', taskId: '7', status: 'in_progress' })
+  await clock.advance(18_000)
+  await dump($, 'tasks-many-collapsed')
+  await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
+  await dump($, 'tasks-many-expanded')
+})
