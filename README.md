@@ -92,7 +92,7 @@ scripts/gen-preview.sh         # 重新產生 docs/preview.svg 示意圖
 
 所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。
 
-### 0.4.0（2026-10-15）
+### [0.4.0](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.4.0)（2026-10-15）
 
 - 變更：收合摘要「✓3/5，最近：X」→「✓3/5 · X」，摺疊提示「…另有 N 項已完成」→「… +N ✓」；畫面已全面使用不分語言的符號
 - 移除：`language` 設定（0.3.0 加入）。畫面已無需翻譯的文字，此設定不再有作用；已存的 `language` 值會被忽略
