@@ -1,5 +1,7 @@
 # task-progress
 
+繁體中文 | [English](README.en.md)
+
 [![最新版本](https://img.shields.io/github/v/release/anguscyk/claude-mods-task-progress)](https://github.com/anguscyk/claude-mods-task-progress/releases/latest) [![授權：MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 A Claude Code mod that shows a progress band above the prompt. When Claude keeps a task list (`TaskCreate` / `TodoWrite`), it draws a progress bar with each task's status and duration; otherwise it lists the turn's tool calls as steps (✓ done, ✗ failed, ▶ running). The elapsed time of the current or last turn sits on the same line. The band is collapsed by default and expands when you press its button. The band uses language-neutral symbols, so it reads the same in any language.
