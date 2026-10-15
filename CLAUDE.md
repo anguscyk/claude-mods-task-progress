@@ -49,4 +49,14 @@ scripts/gen-preview.sh         # 重新產生 docs/preview.svg 與 docs/preview.
 
 - 程式註解、commit 訊息、README 以繁體中文為主；commit 採 `feat:`／`fix:`／`docs:`／`chore:` 前綴。
 - `README.md`（中文）與 `README.en.md`（英文）需同步更新，包含「變更紀錄」段落。
-- 版本號在 `.claude-plugin/plugin.json` 的 `version`；發布後兩份 README 的版本標題會補上 GitHub Release 連結。
+- 版本號在 `.claude-plugin/plugin.json` 的 `version`。
+
+## 發布版本
+
+一律使用 `scripts/release.sh <X.Y.Z>`（可加 `--dry-run` 預演），不要手動改版本號、打 tag 或建 Release。腳本會依序：改 plugin.json 版本 → `validate` 與 `test` → commit `chore: vX.Y.Z` 並 push → 打 tag 並 push → 以兩份 README 的變更紀錄建立中英並列的 GitHub Release → 把 README 版本標題補成 Release 連結再 commit/push。
+
+執行前：
+
+- 在 `main`，且與 `origin/main` 同步；除了兩份 README 與 plugin.json，工作區不可有其他未提交的改動。
+- 先在兩份 README 寫好該版本的變更紀錄段落，標題格式為 `### X.Y.Z（YYYY-MM-DD）`（README.md）與 `### X.Y.Z (YYYY-MM-DD)`（README.en.md）。
+- GitHub 憑證取自 `GITHUB_TOKEN` 或 git credential。
