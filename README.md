@@ -123,6 +123,11 @@ GitHub 憑證優先使用環境變數 `GITHUB_TOKEN`，否則使用 git 已存�
 
 所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。
 
+### 0.5.1（2026-10-15）
+
+- 新增：失敗的 ✗ 步驟後面附上錯誤摘要：被拒絕時顯示原因，錯誤時顯示訊息第一行（Bash 單獨的 `Exit code N` 會接上下一行輸出）；摘要以灰字顯示並依剩餘寬度截斷
+- 文件：示意圖與 README 範例的失敗步驟改用實際的錯誤訊息
+
 ### [0.5.0](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.5.0)（2026-10-15）
 
 - 變更：Bash 步驟直接顯示說明，不再加「Bash 」前綴；Read、Edit 等工具保留名稱（只看檔名分不出動作）
