@@ -14,9 +14,9 @@ With a task list:
 
 ```
 [ - ] ██████████░░░░░░░░░░ 2/4 (50%)  ▶ Running tests  ⟳ 4m40s
-  ✓ Create DTO  1m02s
+  ✓ Create DTO     1m02s
   ✓ Write service  3m15s
-  ▶ Run tests  12s
+  ▶ Run tests      12s
   ○ Update docs
 ```
 
@@ -29,9 +29,9 @@ With more than 8 tasks: when collapsed, the band shows the done count and the mo
 ```
 [ - ] ████████████░░░░░░░░ 6/10 (60%)  ▶ Writing unit tests  ⟳ 6m45s
   … +3 ✓
-  ✓ Write service  2m08s
+  ✓ Write service     2m08s
   ✓ Write controller  1m36s
-  ✓ Add validation  33s
+  ✓ Add validation    33s
   ▶ Write unit tests  18s
   ○ Run integration tests
   ○ Update API docs
@@ -42,9 +42,9 @@ Without a task list, the turn's tool calls are shown as steps:
 
 ```
 [ - ] ●●●●○ 4/5 ✗1  ⟳ 42s
-  ✓ Read register.tsx  0s
-  ✓ Bash Run tests  3s
-  ✗ Bash Type check  8s
+  ✓ Read register.tsx  <1s
+  ✓ Run tests          3s
+  ✗ Type check         8s
   ▶ Edit register.tsx  1s
 ```
 
@@ -63,7 +63,8 @@ Collapsed automatically when the turn ends:
 - **Collapse / expand**: the `[ + ]` / `[ - ]` button at the start of the line (`[ + ]` collapsed, press to expand; `[ - ]` expanded, press to collapse). Always collapsed by default, even while running; expands only when you press it, and collapses again when the turn ends or you submit the next prompt
 - **Collapsed summary**: shows "✓3/5 · Create DTO" (done count and the most recently completed task)
 - **Folding**: with more tasks than the threshold, earlier completed tasks fold into "… +N ✓"
-- **Name truncation**: names in the list and the collapsed summary are cut at the limit and end with "…"; the running item on the progress line is shown in full
+- **Name truncation**: names in the list and the collapsed summary are cut by display width (CJK characters take 2 columns, fitted to the terminal) and end with "…"; the running item on the progress line is shown in full
+- **Aligned durations**: durations in the expanded list line up in one column, and anything under a second shows `<1s`; Bash steps show their description without the tool name
 
 ## Install
 
@@ -89,7 +90,7 @@ Adjust them in `/config` after installing, or set them under `pluginConfigs["tas
 
 | Option | Description | Default | Range |
 |--------|-------------|---------|-------|
-| `nameMax` | Name length limit in the task/step list and the collapsed summary; longer names are cut and end with "…" (the running item on the progress line is always shown in full) | 40 | 1–200 |
+| `nameMax` | Name width limit in the task/step list and the collapsed summary, in terminal columns (CJK characters take 2); longer names are cut and end with "…", and narrower terminals tighten it further so rows do not wrap (the running item on the progress line is always shown in full) | 80 | 1–200 |
 | `foldThreshold` | Fold earlier completed tasks when there are more tasks than this | 8 | 1–200 |
 | `keepDone` | Number of most recently completed tasks to keep when folding (0 folds them all) | 3 | 0–200 |
 

@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
-import { bar, collapsedSummary, dots, stepCount, stepFailures, stepLabel, formatDuration, settingsFrom, truncate, isCollapsedFor, taskElapsed, transition, visibleTasks } from '../hooks/register'
+import { bar, collapsedSummary, displayWidth, nameWidthFor, padToWidth, dots, stepCount, stepFailures, stepLabel, formatDuration, settingsFrom, truncate, isCollapsedFor, taskElapsed, transition, visibleTasks } from '../hooks/register'
 import type { Task } from '../types'
 
 /** 代表下層 plugin（如 next-steps）畫的內容 */
@@ -72,10 +72,10 @@ test('收合摘要顯示完成數與最近完成的任務', () => {
 
   const long = '一二三四五六七八九十一二三四五六七八九十多出來的字'
   expect(collapsedSummary([{ id: '1', subject: long, status: 'completed', endedAt: 1 }], 20)).toBe(
-    '✓1/1 · 一二三四五六七八九十一二三四五六七八九十…',
+    '✓1/1 · 一二三四五六七八九…',
   )
   expect(truncate('x'.repeat(20), 20)).toBe('x'.repeat(20))
-  expect(truncate('x'.repeat(21), 20)).toBe(`${'x'.repeat(20)}…`)
+  expect(truncate('x'.repeat(21), 20)).toBe(`${'x'.repeat(19)}…`)
 })
 
 test('TaskCreate / TaskUpdate 追蹤任務狀態', async ($, on) => {
@@ -205,7 +205,7 @@ test('展開列表的任務名稱超過 nameMax 時截斷', { options: { nameMax
   await band($)
   await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
   const drawn = await band($)
-  expect(drawn).toContain('▶ abcdefghijklmnopqrst…')
+  expect(drawn).toContain('▶ abcdefghijklmnopqrs…')
   expect(drawn).not.toContain('uvwxyz')
   expect(drawn).toContain('○ short')
   // 進度條那行的「進行中」不截斷
@@ -213,9 +213,9 @@ test('展開列表的任務名稱超過 nameMax 時截斷', { options: { nameMax
 })
 
 test('userConfig 不合法時回預設值', () => {
-  expect(settingsFrom({})).toEqual({ nameMax: 40, foldThreshold: 8, keepDone: 3 })
-  expect(settingsFrom({ nameMax: 0, foldThreshold: 0, keepDone: -1 })).toEqual({ nameMax: 40, foldThreshold: 8, keepDone: 3 })
-  expect(settingsFrom({ nameMax: 'x', foldThreshold: '5', keepDone: true })).toEqual({ nameMax: 40, foldThreshold: 8, keepDone: 3 })
+  expect(settingsFrom({})).toEqual({ nameMax: 80, foldThreshold: 8, keepDone: 3 })
+  expect(settingsFrom({ nameMax: 0, foldThreshold: 0, keepDone: -1 })).toEqual({ nameMax: 80, foldThreshold: 8, keepDone: 3 })
+  expect(settingsFrom({ nameMax: 'x', foldThreshold: '5', keepDone: true })).toEqual({ nameMax: 80, foldThreshold: 8, keepDone: 3 })
   expect(settingsFrom({ nameMax: 8.7, foldThreshold: 4.2, keepDone: 0 })).toEqual({ nameMax: 8, foldThreshold: 4, keepDone: 0 })
 })
 
@@ -259,7 +259,7 @@ test('userConfig nameMax 調整截斷長度', { options: { nameMax: 5 } }, async
   await band($)
   await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
   const drawn = await band($)
-  expect(drawn).toContain('▶ abcde…')
+  expect(drawn).toContain('▶ abcd…')
   expect(drawn).toContain('▶ Working hard')
 })
 
@@ -279,8 +279,8 @@ test('保留下層 plugin 的內容（例如 next-steps）', async ($, on) => {
 
 test('步驟描述、點狀進度與摘要', () => {
   expect(stepLabel('Read', { file_path: '/a/b/register.tsx' })).toBe('Read register.tsx')
-  expect(stepLabel('Bash', { command: 'npm test', description: '執行測試' })).toBe('Bash 執行測試')
-  expect(stepLabel('Bash', { command: 'ls -la\nmore' })).toBe('Bash ls -la')
+  expect(stepLabel('Bash', { command: 'npm test', description: '執行測試' })).toBe('執行測試')
+  expect(stepLabel('Bash', { command: 'ls -la\nmore' })).toBe('ls -la')
   expect(stepLabel('Grep', { pattern: 'foo' })).toBe('Grep foo')
   expect(stepLabel('TaskList', {})).toBe('TaskList')
 
@@ -321,7 +321,7 @@ test('沒有任務清單時，以本輪工具呼叫當作步驟顯示', async ($
   expect(drawn).toContain(' 2/2')
   expect(drawn).toContain(' ✗1')
   expect(drawn).toContain('✓ Read a.ts  2s')
-  expect(drawn).toContain('✗ Bash 跑測試')
+  expect(drawn).toContain('✗ 跑測試')
   expect(drawn).toContain('BELOW')
 
   await $.turn.complete({ answer: '', durationMs: 3000, isAborted: false, turnId: 't1', reason: 'answer' })
@@ -351,11 +351,52 @@ test('沒有步驟也沒有任務時，耗時單獨一行', async ($, on) => {
   expect(drawn).not.toContain('toggle-tasks')
 })
 
-test('預設名稱上限為 40 字', () => {
-  const long = 'x'.repeat(45)
-  expect(collapsedSummary([{ id: '1', subject: long, status: 'completed', endedAt: 1 }])).toBe(
-    `✓1/1 · ${'x'.repeat(40)}…`,
-  )
+test('預設名稱上限為 80 格顯示寬度（約 40 個中文字）', () => {
+  const done = (subject: string): Task[] => [{ id: '1', subject, status: 'completed', endedAt: 1 }]
+  expect(collapsedSummary(done('x'.repeat(80)))).toBe(`✓1/1 · ${'x'.repeat(80)}`)
+  expect(collapsedSummary(done('x'.repeat(85)))).toBe(`✓1/1 · ${'x'.repeat(79)}…`)
+  expect(collapsedSummary(done('中'.repeat(40)))).toBe(`✓1/1 · ${'中'.repeat(40)}`)
+  expect(collapsedSummary(done('中'.repeat(45)))).toBe(`✓1/1 · ${'中'.repeat(39)}…`)
+})
+
+test('顯示寬度：中文 2 格、英數 1 格，截斷不超過上限', () => {
+  expect(displayWidth('abc')).toBe(3)
+  expect(displayWidth('執行測試')).toBe(8)
+  expect(displayWidth('Read 檔案.ts')).toBe(12)
+  expect(truncate('執行整合測試', 7)).toBe('執行整…')
+  expect(displayWidth(truncate('執行整合測試並輸出報告', 9))).toBeLessThanOrEqual(9)
+  expect(padToWidth('測試', 6)).toBe('測試  ')
+})
+
+test('名稱寬度依終端機寬度收斂', () => {
+  expect(nameWidthFor(80, undefined)).toBe(80)
+  expect(nameWidthFor(80, 200)).toBe(80)
+  expect(nameWidthFor(80, 60)).toBe(60 - 14)
+  expect(nameWidthFor(80, 12)).toBe(10)
+})
+
+test('不到 1 秒顯示 <1s', () => {
+  expect(formatDuration(0)).toBe('<1s')
+  expect(formatDuration(999)).toBe('<1s')
+  expect(formatDuration(1_000)).toBe('1s')
+})
+
+test('展開列表的耗時對齊成一欄', async ($, on) => {
+  const clock = mock.clock(on)
+  answerBelow(on)
+  on('turn.start', (_$, e) => ({ turnId: e.turnId }))
+  on('tool.call', { tool: 'Bash' }, async () => { await clock.advance(2_000); return { result: {} } as never })
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.tool.call({ tool: 'Bash', command: 'a', description: '短' })
+  await $.tool.call({ tool: 'Bash', command: 'b', description: '比較長的步驟說明' })
+  await band($)
+  await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
+  const tree = JSON.parse(await band($)) as { children: Array<{ children?: unknown[] }> }
+  const rows = JSON.stringify(tree).match(/  ✓ [^"]*/g) ?? []
+  expect(rows.length).toBe(2)
+  // 兩列的耗時從同一個顯示寬度開始
+  const timeColumn = (row: string): number => displayWidth(row.slice(0, row.lastIndexOf('  ') + 2))
+  expect(timeColumn(rows[0] ?? '')).toBe(timeColumn(rows[1] ?? ''))
 })
 
 test('手動展開後，下一次送出提示即取消', async ($, on) => {
@@ -400,17 +441,19 @@ test('步驟列表收合時，進度列顯示執行中的步驟', async ($, on) 
 
   const collapsed = await band($)
   expect(collapsed).toContain('"label":"+"')
-  const label = '▶ Bash 執行整個專案的單元測試與整合測試並輸出報告'
-  const count = (text: string): number => text.split(label).length - 1
-  // 收合時只有進度列顯示（完整名稱，不截斷）
+  const label = '▶ 執行整個專案的單元測試與整合測試並輸出報告'
+  // 進度列上的執行中步驟是一段完整文字（JSON 中剛好等於 "  ▶ 名稱"），列表那一列則帶耗時
+  const header = `"  ${label}"`
+  const count = (text: string): number => text.split(header).length - 1
+  // 收合時進度列顯示完整名稱，不截斷
   expect(count(collapsed)).toBe(1)
-  expect(collapsed.indexOf(label)).toBeLessThan(collapsed.indexOf('BELOW'))
+  expect(collapsed.indexOf(header)).toBeLessThan(collapsed.indexOf('BELOW'))
 
-  // 展開時進度列不重複顯示，只剩列表那一行
+  // 展開時進度列不重複顯示，只剩列表那一行（依寬度可能截斷）
   await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
   const expanded = await band($)
-  expect(count(expanded)).toBe(1)
-  expect(expanded).toContain(`  ${label}  `)
+  expect(count(expanded)).toBe(0)
+  expect(expanded).toContain('  ▶ 執行整個專案的單元測試')
 
   // 執行完畢後收合：沒有執行中的步驟
   release()

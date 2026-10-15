@@ -22,7 +22,9 @@ const RECENT_STEPS = 5
 const MAX_DOTS = 20
 
 export function formatDuration(ms: number): string {
-  const total = Math.max(0, Math.floor(ms / 1000))
+  // 不到 1 秒顯示 <1s：避免整排 0s 佔位置又沒有資訊
+  if (ms < 1000) return '<1s'
+  const total = Math.floor(ms / 1000)
   const h = Math.floor(total / 3600)
   const m = Math.floor((total % 3600) / 60)
   const s = total % 60
@@ -76,7 +78,7 @@ export function visibleTasks(
 }
 
 /** 任務名稱長度上限的預設值；實際值由 userConfig `nameMax` 決定 */
-const DEFAULT_NAME_MAX = 40
+const DEFAULT_NAME_MAX = 80
 
 /** 從 userConfig 取出整數選項；缺值、非數字或小於 min 時用預設 */
 function intOption(options: PluginOptions, key: string, fallback: number, min: number): number {
@@ -122,9 +124,51 @@ export function settingsFrom(options: PluginOptions): Settings {
 }
 
 /** 超過 max 個字（以 code point 計）時截斷並加上「…」 */
-export function truncate(text: string, max: number): string {
-  const chars = Array.from(text)
-  return chars.length > max ? `${chars.slice(0, max).join('')}…` : text
+/** 東亞寬字元（中日韓文字、全形符號等）佔 2 格的 code point 範圍 */
+const WIDE_RANGES: ReadonlyArray<readonly [number, number]> = [
+  [0x1100, 0x115f], [0x2e80, 0x303e], [0x3041, 0x33ff], [0x3400, 0x4dbf], [0x4e00, 0x9fff],
+  [0xa000, 0xa4cf], [0xac00, 0xd7a3], [0xf900, 0xfaff], [0xfe30, 0xfe4f], [0xff00, 0xff60],
+  [0xffe0, 0xffe6], [0x1f300, 0x1f64f], [0x1f900, 0x1f9ff], [0x20000, 0x3fffd],
+]
+
+/** 單一字元在終端機佔的格數：寬字元 2、組合字元與零寬字元 0、其餘 1 */
+export function charWidth(ch: string): number {
+  const cp = ch.codePointAt(0) ?? 0
+  if ((cp >= 0x300 && cp <= 0x36f) || (cp >= 0x200b && cp <= 0x200f)) return 0
+  return WIDE_RANGES.some(([lo, hi]) => cp >= lo && cp <= hi) ? 2 : 1
+}
+
+/** 字串在終端機佔的格數 */
+export function displayWidth(text: string): number {
+  let width = 0
+  for (const ch of text) width += charWidth(ch)
+  return width
+}
+
+/** 顯示寬度超過 maxWidth 格時截斷並加上「…」（「…」佔 1 格，計入上限） */
+export function truncate(text: string, maxWidth: number): string {
+  if (displayWidth(text) <= maxWidth) return text
+  let out = ''
+  let width = 0
+  for (const ch of text) {
+    const w = charWidth(ch)
+    if (width + w > maxWidth - 1) break
+    out += ch
+    width += w
+  }
+  return `${out}…`
+}
+
+/** 以空白補到指定顯示寬度（用於讓耗時對齊成一欄） */
+export function padToWidth(text: string, width: number): string {
+  return text + ' '.repeat(Math.max(0, width - displayWidth(text)))
+}
+
+/** 列表名稱可用的寬度：nameMax 與終端機寬度（扣掉縮排、標記與耗時欄）取較小值，至少 10 格 */
+export function nameWidthFor(nameMax: number, columns: number | undefined): number {
+  if (columns === undefined) return nameMax
+  const reserved = 2 + 2 + 2 + 8 // 縮排、標記與空白、名稱與耗時間距、耗時欄
+  return Math.max(10, Math.min(nameMax, columns - reserved))
 }
 
 /** 收合時的摘要：已完成數與最近完成的任務 */
@@ -166,7 +210,9 @@ export function stepLabel(tool: string, input: Readonly<Record<string, unknown>>
       : path !== undefined
         ? basename(path)
         : (str('description') ?? str('pattern') ?? str('url') ?? str('query') ?? str('skill'))
-  return detail === undefined ? tool : `${tool} ${detail}`
+  if (detail === undefined) return tool
+  // Bash 的說明本身就描述了動作，不再加上工具名稱；其他工具（如 Read／Edit）保留，否則只看檔名分不出動作
+  return tool === 'Bash' ? detail : `${tool} ${detail}`
 }
 
 /** 點狀進度：完成（含失敗）為 ●、執行中為 ○，最多 MAX_DOTS 個 */
@@ -320,6 +366,7 @@ export const register: Register = (on, options) => {
     if (list.length === 0 && stepList.length === 0 && !running && t.lastMs === null) return below
 
     const override = await read($, collapseOverride)
+    const nameWidth = nameWidthFor(nameMax, e.viewport?.columns)
     const { Box, Button, Text } = $.ui.resolve(e)
 
     const elapsedLine = running
@@ -354,13 +401,18 @@ export const register: Register = (on, options) => {
           )}
           {!stepsCollapsed && hiddenSteps > 0 && <Text dimColor>{`  … +${hiddenSteps}`}</Text>}
           {!stepsCollapsed &&
-            stepList.slice(hiddenSteps).map(step => {
-              const name = truncate(step.label, nameMax)
-              const time = formatDuration((step.endedAt ?? Math.max(t.now, step.startedAt)) - step.startedAt)
-              if (step.status === 'done') return <Text key={step.id} color="green">{`  ✓ ${name}  ${time}`}</Text>
-              if (step.status === 'failed') return <Text key={step.id} color="red">{`  ✗ ${name}  ${time}`}</Text>
-              return <Text key={step.id} color="yellow">{`  ▶ ${name}  ${time}`}</Text>
-            })}
+            (() => {
+              const shown = stepList.slice(hiddenSteps)
+              const names = shown.map(step => truncate(step.label, nameWidth))
+              const column = Math.max(0, ...names.map(displayWidth))
+              return shown.map((step, i) => {
+                const name = padToWidth(names[i] ?? '', column)
+                const time = formatDuration((step.endedAt ?? Math.max(t.now, step.startedAt)) - step.startedAt)
+                if (step.status === 'done') return <Text key={step.id} color="green">{`  ✓ ${name}  ${time}`}</Text>
+                if (step.status === 'failed') return <Text key={step.id} color="red">{`  ✗ ${name}  ${time}`}</Text>
+                return <Text key={step.id} color="yellow">{`  ▶ ${name}  ${time}`}</Text>
+              })
+            })()}
           {below}
         </Box>
       )
@@ -372,6 +424,10 @@ export const register: Register = (on, options) => {
     const pct = list.length === 0 ? 0 : Math.round((done / list.length) * 100)
 
     const { rows, hiddenDone } = visibleTasks(list, foldThreshold, keepDone)
+    const taskColumn = Math.max(
+      0,
+      ...rows.filter(task => taskElapsed(task, t.now) !== null).map(task => displayWidth(truncate(task.subject, nameWidth))),
+    )
 
     return (
       <Box flexDirection="column">
@@ -392,8 +448,10 @@ export const register: Register = (on, options) => {
         )}
         {!collapsed && hiddenDone > 0 && <Text dimColor>{`  ${moreDone(hiddenDone)}`}</Text>}
         {!collapsed && rows.map(task => {
-          const name = truncate(task.subject, nameMax)
           const ms = taskElapsed(task, t.now)
+          const short = truncate(task.subject, nameWidth)
+          // 有耗時的列補齊到同一欄寬，讓耗時對齊
+          const name = ms === null ? short : padToWidth(short, taskColumn)
           const time = ms === null ? '' : `  ${formatDuration(ms)}`
           if (task.status === 'completed') {
             return <Text key={task.id} color="green">{`  ✓ ${name}${time}`}</Text>

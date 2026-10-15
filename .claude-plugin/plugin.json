@@ -11,8 +11,8 @@
     "nameMax": {
       "type": "number",
       "title": "Max name length",
-      "description": "Truncate names in the task/step list and the collapsed summary to this many characters, adding \"…\" (the running label on the progress line is never truncated).",
-      "default": 40,
+      "description": "Width limit, in terminal columns (CJK characters take 2), for names in the task/step list and the collapsed summary; longer names are cut and end with \"…\". Narrower terminals tighten it further. The running label on the progress line is never truncated.",
+      "default": 80,
       "min": 1,
       "max": 200
     },
