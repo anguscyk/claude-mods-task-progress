@@ -44,7 +44,7 @@ Without a task list, the turn's tool calls are shown as steps:
 [ - ] ●●●●○ 4/5 ✗1  ⟳ 42s
   ✓ Read register.tsx  <1s
   ✓ Run tests          3s
-  ✗ Type check         8s
+  ✗ Type check         8s  Exit code 2 · error TS2322: Type 'string' is not assignable…
   ▶ Edit register.tsx  1s
 ```
 
@@ -65,6 +65,7 @@ Collapsed automatically when the turn ends:
 - **Folding**: with more tasks than the threshold, earlier completed tasks fold into "… +N ✓"
 - **Name truncation**: names in the list and the collapsed summary are cut by display width (CJK characters take 2 columns, fitted to the terminal) and end with "…"; the running item on the progress line is shown in full
 - **Aligned durations**: durations in the expanded list line up in one column, and anything under a second shows `<1s`; Bash steps show their description without the tool name
+- **Error summary**: a failed ✗ step is followed by the refusal reason or the first line of the error (a bare Bash `Exit code N` is joined with the next line of output)
 
 ## Install
 

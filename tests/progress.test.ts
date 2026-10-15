@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
-import { bar, collapsedSummary, displayWidth, nameWidthFor, padToWidth, dots, stepCount, stepFailures, stepLabel, formatDuration, settingsFrom, truncate, isCollapsedFor, taskElapsed, transition, visibleTasks } from '../hooks/register'
+import { bar, collapsedSummary, displayWidth, errorSummary, nameWidthFor, padToWidth, dots, stepCount, stepFailures, stepLabel, formatDuration, settingsFrom, truncate, isCollapsedFor, taskElapsed, transition, visibleTasks } from '../hooks/register'
 import type { Task } from '../types'
 
 /** 代表下層 plugin（如 next-steps）畫的內容 */
@@ -322,6 +322,8 @@ test('沒有任務清單時，以本輪工具呼叫當作步驟顯示', async ($
   expect(drawn).toContain(' ✗1')
   expect(drawn).toContain('✓ Read a.ts  2s')
   expect(drawn).toContain('✗ 跑測試')
+  // 被拒絕的步驟附上原因
+  expect(drawn).toContain('"  nope"')
   expect(drawn).toContain('BELOW')
 
   await $.turn.complete({ answer: '', durationMs: 3000, isAborted: false, turnId: 't1', reason: 'answer' })
@@ -497,4 +499,28 @@ test('畫面只用不分語言的符號（無中文字）', async ($, on) => {
   const after = await band($)
   expect(after).toContain('◷ ')
   expect(after).not.toMatch(/[\u4e00-\u9fff]/)
+})
+
+test('錯誤摘要：拒絕原因或錯誤第一行', () => {
+  expect(errorSummary({ deny: '不允許修改 .env' })).toBe('不允許修改 .env')
+  expect(errorSummary({ isError: true, text: '\n  檔案不存在：a.ts\n詳細堆疊…' })).toBe('檔案不存在：a.ts')
+  expect(errorSummary({ isError: true, text: 'Exit code 2\nerror TS2322: 型別不符' })).toBe('Exit code 2 · error TS2322: 型別不符')
+  expect(errorSummary({ isError: true, text: 'Exit code 1' })).toBe('Exit code 1')
+  expect(errorSummary({ isError: true, text: '<tool_use_error>File has not been read yet</tool_use_error>' })).toBe('File has not been read yet')
+  expect(errorSummary({ isError: true, result: '字串結果' })).toBe('字串結果')
+  expect(errorSummary({ result: 'ok' } as never)).toBe(undefined)
+})
+
+test('錯誤的步驟在展開列表顯示摘要', async ($, on) => {
+  mock.clock(on)
+  answerBelow(on)
+  on('turn.start', (_$, e) => ({ turnId: e.turnId }))
+  on('tool.call', { tool: 'Bash' }, () => ({ isError: true, result: undefined, text: 'Exit code 1\nnpm ERR! missing script: lint' }) as never)
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.tool.call({ tool: 'Bash', command: 'npm run lint', description: '執行 lint' })
+  await band($)
+  await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
+  const drawn = await band($)
+  expect(drawn).toContain('✗ 執行 lint')
+  expect(drawn).toContain('Exit code 1 · npm ERR! missing script: lint')
 })

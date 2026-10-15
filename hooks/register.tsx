@@ -215,6 +215,22 @@ export function stepLabel(tool: string, input: Readonly<Record<string, unknown>>
   return tool === 'Bash' ? detail : `${tool} ${detail}`
 }
 
+/**
+ * 失敗步驟的錯誤摘要：被拒絕取原因，錯誤取訊息第一個有內容的行。
+ * Bash 的「Exit code N」單獨一行資訊太少，後面接上下一行輸出（例如「Exit code 1 · tsc: error …」）。
+ */
+export function errorSummary(ran: { deny?: string; isError?: true; text?: string; result?: unknown }): string | undefined {
+  const raw = ran.deny ?? (ran.isError === true ? (ran.text ?? (typeof ran.result === 'string' ? ran.result : '')) : undefined)
+  if (raw === undefined) return undefined
+  const lines = raw
+    .split('\n')
+    .map(line => line.replace(/<\/?[a-z_]+>/gi, '').trim())
+    .filter(line => line !== '')
+  const [first, second] = lines
+  if (first === undefined) return undefined
+  return /^Exit code \d+$/.test(first) && second !== undefined ? `${first} · ${second}` : first
+}
+
 /** 點狀進度：完成（含失敗）為 ●、執行中為 ○，最多 MAX_DOTS 個 */
 export function dots(list: readonly Step[]): string {
   const finished = list.filter(s => s.status !== 'running').length
@@ -293,14 +309,21 @@ export const register: Register = (on, options) => {
     const step: Step = { id, label, status: 'running', startedAt }
     await update($, steps, list => [...list, step])
     let failed = true
+    let error: string | undefined
     try {
       const ran = await next(e)
       failed = ran.deny !== undefined || ran.isError === true
+      error = errorSummary(ran)
       return ran
+    } catch (thrown) {
+      error = thrown instanceof Error ? thrown.message.split('\n')[0] : undefined
+      throw thrown
     } finally {
       const endedAt = await $.clock.now()
       const status: StepStatus = failed ? 'failed' : 'done'
-      await update($, steps, list => list.map(s => (s.id === id ? { ...s, status, endedAt } : s)))
+      await update($, steps, list =>
+        list.map(s => (s.id === id ? { ...s, status, endedAt, ...(failed && error ? { error } : {}) } : s)),
+      )
     }
   }).catch(($, e, next) => next(e))
 
@@ -409,7 +432,17 @@ export const register: Register = (on, options) => {
                 const name = padToWidth(names[i] ?? '', column)
                 const time = formatDuration((step.endedAt ?? Math.max(t.now, step.startedAt)) - step.startedAt)
                 if (step.status === 'done') return <Text key={step.id} color="green">{`  ✓ ${name}  ${time}`}</Text>
-                if (step.status === 'failed') return <Text key={step.id} color="red">{`  ✗ ${name}  ${time}`}</Text>
+                if (step.status === 'failed') {
+                  // 錯誤摘要接在耗時後面，寬度用剩下的空間（至少 10 格，終端機寬度未知時上限 60 格）
+                  const used = 4 + column + 2 + displayWidth(time) + 2
+                  const room = e.viewport?.columns === undefined ? 60 : Math.max(10, e.viewport.columns - used)
+                  return (
+                    <Box key={step.id}>
+                      <Text color="red">{`  ✗ ${name}  ${time}`}</Text>
+                      {step.error !== undefined && <Text dimColor>{`  ${truncate(step.error, room)}`}</Text>}
+                    </Box>
+                  )
+                }
                 return <Text key={step.id} color="yellow">{`  ▶ ${name}  ${time}`}</Text>
               })
             })()}

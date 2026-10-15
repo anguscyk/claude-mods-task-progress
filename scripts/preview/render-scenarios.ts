@@ -118,7 +118,12 @@ for (const locale of ['zh', 'en'] as const) {
     on('tool.call', { tool: 'Read' }, async () => { await clock.advance(400); return { result: {} } as never })
     on('tool.call', { tool: 'Edit' }, async () => { await clock.advance(1_200); return { result: {} } as never })
     let fail = false
-    on('tool.call', { tool: 'Bash' }, async () => { await clock.advance(fail ? 8_000 : 3_000); return fail ? { deny: 'x' } : ({ result: {} } as never) })
+    on('tool.call', { tool: 'Bash' }, async () => {
+      await clock.advance(fail ? 8_000 : 3_000)
+      return fail
+        ? ({ isError: true, result: undefined, text: "Exit code 2\nerror TS2322: Type 'string' is not assignable to type 'number'." } as never)
+        : ({ result: {} } as never)
+    })
     let release: () => void = () => undefined
     let entered: () => void = () => undefined
     const inFlight = new Promise<void>(r => { entered = r })

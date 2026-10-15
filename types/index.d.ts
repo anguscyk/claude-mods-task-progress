@@ -11,7 +11,15 @@ export type Task = {
 }
 export type StepStatus = 'running' | 'done' | 'failed'
 /** 沒有任務清單時，以本輪每個工具呼叫當作一步 */
-export type Step = { id: string; label: string; status: StepStatus; startedAt: number; endedAt?: number }
+export type Step = {
+  id: string
+  label: string
+  status: StepStatus
+  startedAt: number
+  endedAt?: number
+  /** 失敗時的錯誤摘要：被拒絕的原因或錯誤訊息的第一行 */
+  error?: string
+}
 export type Timing = { startedAt: number | null; now: number; lastMs: number | null }
 
 declare module 'claude-code' {
