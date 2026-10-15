@@ -110,6 +110,11 @@ scripts/gen-preview.sh         # 重新產生 docs/preview.svg 示意圖
 
 所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。
 
+### 0.4.1（2026-10-15）
+
+- 文件：示意圖（`docs/preview.svg`）新增任務超過 8 個的兩個畫面：收合時的「✓6/10 · 最近完成的任務」，以及展開時較早完成的任務摺疊成「… +3 ✓」
+- 文件：README 範例區塊加上同情境的文字範例
+
 ### [0.4.0](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.4.0)（2026-10-15）
 
 - 變更：收合摘要「✓3/5，最近：X」→「✓3/5 · X」，摺疊提示「…另有 N 項已完成」→「… +N ✓」；畫面已全面使用不分語言的符號
