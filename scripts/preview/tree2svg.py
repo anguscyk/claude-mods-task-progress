@@ -26,7 +26,8 @@ def lines(node):
         style = props.get('color') or ('dim' if props.get('dimColor') else None)
         return [[(s, style)]]
     if t == 'Button':
-        return [[(f"[ {props.get('label', '')} ]", 'button')]]
+        label = props.get('label', '')
+        return [[(label if props.get('plain') else f"[ {label} ]", 'button')]]
     if t == 'Box':
         kids = [lines(c) for c in node.get('children', []) or [] if not isinstance(c, str)]
         if props.get('flexDirection') == 'column':

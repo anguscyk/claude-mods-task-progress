@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
-import { MESSAGES, bar, collapsedSummary, dots, stepLabel, stepSummary, formatDuration, settingsFrom, truncate, isCollapsedFor, taskElapsed, transition, visibleTasks } from '../hooks/register'
+import { MESSAGES, bar, collapsedSummary, dots, stepCount, stepFailures, stepLabel, formatDuration, settingsFrom, truncate, isCollapsedFor, taskElapsed, transition, visibleTasks } from '../hooks/register'
 import type { Task } from '../types'
 
 /** 代表下層 plugin（如 next-steps）畫的內容 */
@@ -67,12 +67,12 @@ test('收合摘要顯示完成數與最近完成的任務', () => {
     { id: '2', subject: '撰寫 Service', status: 'completed', endedAt: 100 },
     { id: '3', subject: '測試', status: 'pending' },
   ]
-  expect(collapsedSummary(list)).toBe('已完成 2/3，最近：建立 DTO')
-  expect(collapsedSummary([{ id: '1', subject: 'A', status: 'pending' }])).toBe('已完成 0/1')
+  expect(collapsedSummary(list)).toBe('✓2/3，最近：建立 DTO')
+  expect(collapsedSummary([{ id: '1', subject: 'A', status: 'pending' }])).toBe('✓0/1')
 
   const long = '一二三四五六七八九十一二三四五六七八九十多出來的字'
   expect(collapsedSummary([{ id: '1', subject: long, status: 'completed', endedAt: 1 }], 20)).toBe(
-    '已完成 1/1，最近：一二三四五六七八九十一二三四五六七八九十…',
+    '✓1/1，最近：一二三四五六七八九十一二三四五六七八九十…',
   )
   expect(truncate('x'.repeat(20), 20)).toBe('x'.repeat(20))
   expect(truncate('x'.repeat(21), 20)).toBe(`${'x'.repeat(20)}…`)
@@ -96,23 +96,23 @@ test('TaskCreate / TaskUpdate 追蹤任務狀態', async ($, on) => {
 
   // 有任務進行中也維持收合
   const before = await band($)
-  expect(before).toContain('展開')
-  expect(before).not.toContain('▶ B')
+  expect(before).toContain('"label":"▸"')
+  expect(before).not.toContain('▶ B  ')
 
   await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
   const drawn = await band($)
   expect(drawn).toContain('1/2 (50%)')
-  expect(drawn).toContain('進行中：B')
+  expect(drawn).toContain('  ▶ B')
   expect(drawn).toContain('✓ A  1m02s')
-  expect(drawn).toContain('▶ B')
+  expect(drawn).toContain('▶ B  ')
   expect(drawn).not.toContain('耗時')
 
   await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
-  expect(await band($)).not.toContain('▶ B')
+  expect(await band($)).not.toContain('▶ B  ')
 
   // 任務結束不改變收合狀態
   await $.tool.call({ tool: 'TaskUpdate', taskId: '2', status: 'deleted' })
-  expect(await band($)).toContain('展開')
+  expect(await band($)).toContain('"label":"▸"')
   expect(await band($)).toContain('1/1')
 })
 
@@ -150,14 +150,14 @@ test('按鈕收合與展開任務列表', async ($, on) => {
 
   // 沒有進行中的任務：預設收合
   const collapsed = await band($)
-  expect(collapsed).toContain('展開')
-  expect(collapsed).toContain('已完成 1/2，最近：x')
+  expect(collapsed).toContain('"label":"▸"')
+  expect(collapsed).toContain('✓1/2，最近：x')
   expect(collapsed).toContain('1/2 (50%)')
   expect(collapsed).not.toContain('○ y')
 
   await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
   const expanded = await band($)
-  expect(expanded).toContain('收合')
+  expect(expanded).toContain('"label":"▾"')
   expect(expanded).toContain('○ y')
   expect(expanded).not.toContain('最近：')
 })
@@ -175,19 +175,19 @@ test('執行中也維持收合；手動展開後於每輪結束收回', async ($
   await $.turn.start({ text: 'go', turnId: 't1' })
   await $.tool.call({ tool: 'TaskCreate', subject: 'A', description: 'a' })
   await $.tool.call({ tool: 'TaskUpdate', taskId: '1', status: 'in_progress' })
-  expect(await band($)).not.toContain('▶ A')
+  expect(await band($)).not.toContain('▶ A  ')
   await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
-  expect(await band($)).toContain('▶ A')
+  expect(await band($)).toContain('▶ A  ')
 
   await $.turn.complete({ answer: '', durationMs: 1000, isAborted: false, turnId: 't1', reason: 'answer' })
   const afterTurn = await band($)
   expect(afterTurn.indexOf('上一輪耗時')).toBeGreaterThan(afterTurn.indexOf('toggle-tasks'))
-  expect(afterTurn).toContain('展開')
-  expect(afterTurn).not.toContain('▶ A')
+  expect(afterTurn).toContain('"label":"▸"')
+  expect(afterTurn).not.toContain('▶ A  ')
 
   // 下一輪仍有任務進行中，也不會自動展開
   await $.turn.start({ text: 'again', turnId: 't2' })
-  expect(await band($)).not.toContain('▶ A')
+  expect(await band($)).not.toContain('▶ A  ')
 })
 
 test('展開列表的任務名稱超過 nameMax 時截斷', { options: { nameMax: 20 } }, async ($, on) => {
@@ -209,7 +209,7 @@ test('展開列表的任務名稱超過 nameMax 時截斷', { options: { nameMax
   expect(drawn).not.toContain('uvwxyz')
   expect(drawn).toContain('○ short')
   // 進度條那行的「進行中」不截斷
-  expect(drawn).toContain('進行中：Working on 0123456789ABCDEF')
+  expect(drawn).toContain('▶ Working on 0123456789ABCDEF')
 })
 
 test('userConfig 不合法時回預設值', () => {
@@ -260,7 +260,7 @@ test('userConfig nameMax 調整截斷長度', { options: { nameMax: 5 } }, async
   await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
   const drawn = await band($)
   expect(drawn).toContain('▶ abcde…')
-  expect(drawn).toContain('進行中：Working hard')
+  expect(drawn).toContain('▶ Working hard')
 })
 
 test('保留下層 plugin 的內容（例如 next-steps）', async ($, on) => {
@@ -273,7 +273,7 @@ test('保留下層 plugin 的內容（例如 next-steps）', async ($, on) => {
   expect(idle).not.toContain('task-progress')
   await $.tool.call({ tool: 'TodoWrite', todos: [{ content: 'a', status: 'in_progress', activeForm: 'A' }] })
   const drawn = await band($)
-  expect(drawn).toContain('進行中：A')
+  expect(drawn).toContain('  ▶ A"')
   expect(drawn).toContain('BELOW')
 })
 
@@ -287,8 +287,9 @@ test('步驟描述、點狀進度與摘要', () => {
   const s = (status: 'running' | 'done' | 'failed') => ({ id: status, label: status, status, startedAt: 0 })
   expect(dots([s('done'), s('failed'), s('running')])).toBe('●●○')
   expect(dots(Array.from({ length: 30 }, () => s('done')))).toBe('●'.repeat(20))
-  expect(stepSummary([s('done'), s('failed')])).toBe('共 2 步，失敗 1')
-  expect(stepSummary([s('done')])).toBe('共 1 步')
+  expect(stepCount([s('done'), s('failed'), s('running')])).toBe('2/3')
+  expect(stepFailures([s('done'), s('failed')])).toBe('✗1')
+  expect(stepFailures([s('done')])).toBe('')
 })
 
 test('沒有任務清單時，以本輪工具呼叫當作步驟顯示', async ($, on) => {
@@ -308,7 +309,7 @@ test('沒有任務清單時，以本輪工具呼叫當作步驟顯示', async ($
 
   // 執行中也維持收合
   const running = await band($)
-  expect(running).toContain(' 2 步')
+  expect(running).toContain(' 2/2')
   expect(running).not.toContain('✓ Read')
 
   await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
@@ -317,14 +318,16 @@ test('沒有任務清單時，以本輪工具呼叫當作步驟顯示', async ($
   // 執行中也在同一行，且在步驟列之前
   expect(drawn.indexOf('執行中')).toBeGreaterThan(drawn.indexOf('toggle-tasks'))
   expect(drawn.indexOf('執行中')).toBeLessThan(drawn.indexOf('✓ Read'))
-  expect(drawn).toContain(' 2 步')
+  expect(drawn).toContain(' 2/2')
+  expect(drawn).toContain(' ✗1')
   expect(drawn).toContain('✓ Read a.ts  2s')
   expect(drawn).toContain('✗ Bash 跑測試')
   expect(drawn).toContain('BELOW')
 
   await $.turn.complete({ answer: '', durationMs: 3000, isAborted: false, turnId: 't1', reason: 'answer' })
   const after = await band($)
-  expect(after).toContain('共 2 步，失敗 1')
+  expect(after).toContain(' 2/2')
+  expect(after).toContain(' ✗1')
   // 耗時與進度列同一行：在按鈕之後
   expect(after).toContain('  上一輪耗時 2s')
   expect(after.indexOf('上一輪耗時')).toBeGreaterThan(after.indexOf('toggle-tasks'))
@@ -332,7 +335,7 @@ test('沒有任務清單時，以本輪工具呼叫當作步驟顯示', async ($
 
   // 新一輪重新計算
   await $.turn.start({ text: 'again', turnId: 't2' })
-  expect(await band($)).not.toContain('步')
+  expect(await band($)).not.toContain('●')
 })
 
 test('沒有步驟也沒有任務時，耗時單獨一行', async ($, on) => {
@@ -350,7 +353,7 @@ test('沒有步驟也沒有任務時，耗時單獨一行', async ($, on) => {
 test('預設名稱上限為 40 字', () => {
   const long = 'x'.repeat(45)
   expect(collapsedSummary([{ id: '1', subject: long, status: 'completed', endedAt: 1 }])).toBe(
-    `已完成 1/1，最近：${'x'.repeat(40)}…`,
+    `✓1/1，最近：${'x'.repeat(40)}…`,
   )
 })
 
@@ -365,14 +368,14 @@ test('手動展開後，下一次送出提示即取消', async ($, on) => {
   await $.turn.start({ text: 'go', turnId: 't1' })
   await $.tool.call({ tool: 'Read', file_path: '/x/a.ts' })
   await $.turn.complete({ answer: '', durationMs: 1000, isAborted: false, turnId: 't1', reason: 'answer' })
-  expect(await band($)).toContain('展開')
+  expect(await band($)).toContain('"label":"▸"')
 
   await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
   expect(await band($)).toContain('✓ Read a.ts')
 
   await $.prompt.submit({ text: '/reload-plugins' } as never)
   const after = await band($)
-  expect(after).toContain('展開')
+  expect(after).toContain('"label":"▸"')
   expect(after).not.toContain('✓ Read a.ts')
 })
 
@@ -395,19 +398,24 @@ test('步驟列表收合時，進度列顯示執行中的步驟', async ($, on) 
   await inFlight
 
   const collapsed = await band($)
-  expect(collapsed).toContain('展開')
-  // 完整名稱，不截斷
-  expect(collapsed).toContain('進行中：Bash 執行整個專案的單元測試與整合測試並輸出報告')
+  expect(collapsed).toContain('"label":"▸"')
+  const label = '▶ Bash 執行整個專案的單元測試與整合測試並輸出報告'
+  const count = (text: string): number => text.split(label).length - 1
+  // 收合時只有進度列顯示（完整名稱，不截斷）
+  expect(count(collapsed)).toBe(1)
+  expect(collapsed.indexOf(label)).toBeLessThan(collapsed.indexOf('BELOW'))
 
+  // 展開時進度列不重複顯示，只剩列表那一行
   await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
   const expanded = await band($)
-  expect(expanded).not.toContain('進行中：')
-  expect(expanded).toContain('▶ Bash')
+  expect(count(expanded)).toBe(1)
+  expect(expanded).toContain(`  ${label}  `)
 
+  // 執行完畢後收合：沒有執行中的步驟
   release()
   await pending
   await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
-  expect(await band($)).not.toContain('進行中：')
+  expect(count(await band($))).toBe(0)
 })
 
 test('language 選項：不合法值回預設 zh-TW', () => {
@@ -418,14 +426,11 @@ test('language 選項：不合法值回預設 zh-TW', () => {
 
 test('英文摘要文字', () => {
   const en = MESSAGES.en
-  const s = (status: 'running' | 'done' | 'failed') => ({ id: status, label: status, status, startedAt: 0 })
-  expect(stepSummary([s('done'), s('failed')], en)).toBe('2 steps, 1 failed')
-  expect(stepSummary([s('done')], en)).toBe('1 step')
   const list: Task[] = [
     { id: '1', subject: 'Build DTO', status: 'completed', endedAt: 2 },
     { id: '2', subject: 'Tests', status: 'pending' },
   ]
-  expect(collapsedSummary(list, 40, en)).toBe('Done 1/2, latest: Build DTO')
+  expect(collapsedSummary(list, 40, en)).toBe('✓1/2, latest: Build DTO')
 })
 
 test('language=en 時畫面文字為英文', { options: { language: 'en' } }, async ($, on) => {
@@ -440,13 +445,16 @@ test('language=en 時畫面文字為英文', { options: { language: 'en' } }, as
   await $.tool.call({ tool: 'Read', file_path: '/x/a.ts' })
   await $.tool.call({ tool: 'Bash', command: 'false' })
   const running = await band($)
-  expect(running).toContain(' 2 steps')
-  expect(running).toContain('"label":"Expand"')
+  expect(running).toContain(' 2/2')
+  // 圖示按鈕在行首、無方括號
+  expect(running.indexOf('toggle-tasks')).toBeLessThan(running.indexOf('●'))
+  expect(running).toContain('"plain":true')
+  expect(running).toContain('"label":"▸"')
   expect(running).toContain('Running ')
-  expect(running).toContain('2 steps, 1 failed')
+  expect(running).toContain(' ✗1')
 
   await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
-  expect(await band($)).toContain('"label":"Collapse"')
+  expect(await band($)).toContain('"label":"▾"')
 
   await $.turn.complete({ answer: '', durationMs: 0, isAborted: false, turnId: 't1', reason: 'answer' })
   const after = await band($)

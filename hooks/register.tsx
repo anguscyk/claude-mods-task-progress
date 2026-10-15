@@ -84,50 +84,35 @@ function intOption(options: PluginOptions, key: string, fallback: number, min: n
   return typeof v === 'number' && Number.isFinite(v) && v >= min ? Math.floor(v) : fallback
 }
 
+/** 收合／展開按鈕圖示：▸ 目前收合（按下展開）、▾ 目前展開（按下收合） */
+export const TOGGLE_ICON = { collapsed: '▸', expanded: '▾' } as const
+
+/** 進行中項目（不分語言），例如「▶ Running tests」 */
+export const inProgress = (name: string): string => `▶ ${name}`
+
+/** 已完成數（不分語言），例如「✓3/5」 */
+export const doneCount = (done: number, total: number): string => `✓${done}/${total}`
+
 export type Lang = 'zh-TW' | 'en'
 
 /** 畫面文字；依 userConfig `language` 選用 */
 export type Messages = {
-  expand: string
-  collapse: string
   running: (elapsed: string) => string
   lastTurn: (elapsed: string) => string
-  inProgress: (name: string) => string
-  stepCount: (n: number) => string
-  stepSummary: (total: number, failed: number) => string
-  earlierSteps: (n: number) => string
-  doneSummary: (done: number, total: number) => string
   latest: (name: string) => string
   moreDone: (n: number) => string
 }
 
 export const MESSAGES: Readonly<Record<Lang, Messages>> = {
   'zh-TW': {
-    expand: '展開',
-    collapse: '收合',
     running: d => `執行中 ${d}`,
     lastTurn: d => `上一輪耗時 ${d}`,
-    inProgress: name => `進行中：${name}`,
-    stepCount: n => `${n} 步`,
-    stepSummary: (total, failed) => (failed > 0 ? `共 ${total} 步，失敗 ${failed}` : `共 ${total} 步`),
-    earlierSteps: n => `…前面還有 ${n} 步`,
-    doneSummary: (done, total) => `已完成 ${done}/${total}`,
     latest: name => `，最近：${name}`,
     moreDone: n => `…另有 ${n} 項已完成`,
   },
   en: {
-    expand: 'Expand',
-    collapse: 'Collapse',
     running: d => `Running ${d}`,
     lastTurn: d => `Last turn ${d}`,
-    inProgress: name => `Now: ${name}`,
-    stepCount: n => (n === 1 ? '1 step' : `${n} steps`),
-    stepSummary: (total, failed) => {
-      const steps = total === 1 ? '1 step' : `${total} steps`
-      return failed > 0 ? `${steps}, ${failed} failed` : steps
-    },
-    earlierSteps: n => (n === 1 ? '…1 earlier step' : `…${n} earlier steps`),
-    doneSummary: (done, total) => `Done ${done}/${total}`,
     latest: name => `, latest: ${name}`,
     moreDone: n => `…${n} more completed`,
   },
@@ -162,7 +147,7 @@ export function collapsedSummary(
     (best, t) => (best === undefined || (t.endedAt ?? 0) >= (best.endedAt ?? 0) ? t : best),
     undefined,
   )
-  const head = m.doneSummary(done.length, list.length)
+  const head = doneCount(done.length, list.length)
   return latest === undefined ? head : `${head}${m.latest(truncate(latest.subject, nameMax))}`
 }
 
@@ -202,9 +187,15 @@ export function dots(list: readonly Step[]): string {
   return '●'.repeat(Math.min(finished, MAX_DOTS - shownRunning)) + '○'.repeat(shownRunning)
 }
 
-/** 步驟摘要，例如「共 5 步，失敗 1」 */
-export function stepSummary(list: readonly Step[], m: Messages = MESSAGES['zh-TW']): string {
-  return m.stepSummary(list.length, list.filter(s => s.status === 'failed').length)
+/** 步驟計數（不分語言）：已結束／總數，例如「4/5」 */
+export function stepCount(list: readonly Step[]): string {
+  return `${list.filter(s => s.status !== 'running').length}/${list.length}`
+}
+
+/** 失敗步驟數（不分語言），例如「✗1」；沒有失敗時為空字串 */
+export function stepFailures(list: readonly Step[]): string {
+  const failed = list.filter(s => s.status === 'failed').length
+  return failed > 0 ? `✗${failed}` : ''
 }
 
 export const register: Register = (on, options) => {
@@ -359,20 +350,21 @@ export const register: Register = (on, options) => {
           {stepList.length === 0 && elapsedLine !== null && <Text dimColor>{elapsedLine}</Text>}
           {stepList.length > 0 && (
             <Box>
-              <Text color="green">{dots(stepList)}</Text>
-              <Text>{` ${m.stepCount(stepList.length)}`}</Text>
-              {stepsCollapsed && currentStep && <Text dimColor>{`  ${m.inProgress(currentStep.label)}`}</Text>}
-              <Text> </Text>
               <Button
                 key="toggle-tasks"
-                label={stepsCollapsed ? m.expand : m.collapse}
+                plain
+                label={stepsCollapsed ? TOGGLE_ICON.collapsed : TOGGLE_ICON.expanded}
                 onPress={() => update($, collapseOverride, () => !stepsCollapsed)}
               />
+              <Text> </Text>
+              <Text color="green">{dots(stepList)}</Text>
+              <Text>{` ${stepCount(stepList)}`}</Text>
+              {stepFailures(stepList) !== '' && <Text color="red">{` ${stepFailures(stepList)}`}</Text>}
+              {stepsCollapsed && currentStep && <Text dimColor>{`  ${inProgress(currentStep.label)}`}</Text>}
               {elapsedLine !== null && <Text dimColor>{`  ${elapsedLine}`}</Text>}
-              {stepsCollapsed && <Text dimColor>{`  ${stepSummary(stepList, m)}`}</Text>}
             </Box>
           )}
-          {!stepsCollapsed && hiddenSteps > 0 && <Text dimColor>{`  ${m.earlierSteps(hiddenSteps)}`}</Text>}
+          {!stepsCollapsed && hiddenSteps > 0 && <Text dimColor>{`  … +${hiddenSteps}`}</Text>}
           {!stepsCollapsed &&
             stepList.slice(hiddenSteps).map(step => {
               const name = truncate(step.label, nameMax)
@@ -397,15 +389,16 @@ export const register: Register = (on, options) => {
       <Box flexDirection="column">
         {list.length > 0 && (
           <Box>
-            <Text color="green">{bar(done, list.length)}</Text>
-            <Text>{` ${done}/${list.length} (${pct}%)`}</Text>
-            {current && <Text dimColor>{`  ${m.inProgress(current.activeForm ?? current.subject)}`}</Text>}
-            <Text> </Text>
             <Button
               key="toggle-tasks"
-              label={collapsed ? m.expand : m.collapse}
+              plain
+              label={collapsed ? TOGGLE_ICON.collapsed : TOGGLE_ICON.expanded}
               onPress={() => update($, collapseOverride, () => !collapsed)}
             />
+            <Text> </Text>
+            <Text color="green">{bar(done, list.length)}</Text>
+            <Text>{` ${done}/${list.length} (${pct}%)`}</Text>
+            {current && <Text dimColor>{`  ${inProgress(current.activeForm ?? current.subject)}`}</Text>}
             {elapsedLine !== null && <Text dimColor>{`  ${elapsedLine}`}</Text>}
             {collapsed && <Text dimColor>{`  ${collapsedSummary(list, nameMax, m)}`}</Text>}
           </Box>
