@@ -2,3 +2,6 @@
 .DS_Store
 *.log
 .mcpb-cache/
+
+# 本機發布腳本：會讀取 GitHub 憑證，不納入版本控制（避免 marketplace 審核暫緩）
+scripts/release.sh
