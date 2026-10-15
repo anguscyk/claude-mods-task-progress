@@ -5,7 +5,18 @@
   "author": {
     "name": "anguscyk"
   },
+  "homepage": "https://github.com/anguscyk/claude-mods-task-progress",
+  "repository": "https://github.com/anguscyk/claude-mods-task-progress",
   "license": "MIT",
+  "keywords": [
+    "progress",
+    "tasks",
+    "steps",
+    "timer",
+    "status",
+    "function-hooks",
+    "ui"
+  ],
   "types": "./types/index.d.ts",
   "userConfig": {
     "nameMax": {
@@ -14,7 +25,8 @@
       "description": "Width limit, in terminal columns (CJK characters take 2), for names in the task/step list and the collapsed summary; longer names are cut and end with \"…\". Narrower terminals tighten it further. The running label on the progress line is never truncated.",
       "default": 80,
       "min": 1,
-      "max": 200
+      "max": 200,
+      "required": false
     },
     "foldThreshold": {
       "type": "number",
@@ -22,7 +34,8 @@
       "description": "When there are more tasks than this, fold the earlier completed ones.",
       "default": 8,
       "min": 1,
-      "max": 200
+      "max": 200,
+      "required": false
     },
     "keepDone": {
       "type": "number",
@@ -30,7 +43,8 @@
       "description": "Number of most recently completed tasks to keep when folding (0 folds them all).",
       "default": 3,
       "min": 0,
-      "max": 200
+      "max": 200,
+      "required": false
     }
   }
 }
