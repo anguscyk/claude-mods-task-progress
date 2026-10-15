@@ -120,6 +120,8 @@ After changing how the band looks, run `scripts/gen-preview.sh` to update the pr
 
 Releases and the icon are produced with the maintainer's local tools, which are not under version control.
 
+Project instructions for Claude Code are in `.claude/CLAUDE.md`.
+
 ## Changelog
 
 Release notes for every version are on [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases).

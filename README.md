@@ -120,6 +120,8 @@ scripts/gen-preview.sh         # 重新產生 docs/preview.svg 與 docs/preview.
 
 發布流程與圖示產生使用維護者本機的工具，不納入版本控制。
 
+給 Claude Code 的專案說明放在 `.claude/CLAUDE.md`。
+
 ## 變更紀錄
 
 所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。
