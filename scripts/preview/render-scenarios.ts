@@ -6,6 +6,8 @@
 import { mock, test } from 'claude-code/testing'
 import type { Engine, On } from 'claude-code/testing'
 
+import { contentAfterEdit } from '../hooks/register'
+
 type Names = {
   /** 4 個任務；第 3 個為進行中 */
   tasks: readonly [string, string, string, string]
@@ -15,6 +17,8 @@ type Names = {
   manyActive: string
   stepTest: string
   stepTypeCheck: string
+  /** markdown issue 檔的 5 個核取項目 */
+  checklist: readonly [string, string, string, string, string]
 }
 
 const NAMES: Readonly<Record<'zh' | 'en', Names>> = {
@@ -28,6 +32,7 @@ const NAMES: Readonly<Record<'zh' | 'en', Names>> = {
     manyActive: 'Writing unit tests',
     stepTest: '執行測試',
     stepTypeCheck: '型別檢查',
+    checklist: ['打 tag season-1', '建置封存版', '確認 service worker 不攔截', '加上封存版測試', '更新 CLAUDE.md'],
   },
   en: {
     tasks: ['Create DTO', 'Write service', 'Run tests', 'Update docs'],
@@ -39,6 +44,7 @@ const NAMES: Readonly<Record<'zh' | 'en', Names>> = {
     manyActive: 'Writing unit tests',
     stepTest: 'Run tests',
     stepTypeCheck: 'Type check',
+    checklist: ['Tag season-1', 'Build the archive', 'Check the service worker skips it', 'Add archive tests', 'Update CLAUDE.md'],
   },
 }
 
@@ -110,6 +116,32 @@ for (const locale of ['zh', 'en'] as const) {
     await dump($, `${locale}:tasks-many-collapsed`)
     await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
     await dump($, `${locale}:tasks-many-expanded`)
+  })
+
+  test(`checklist ${locale}`, async ($, on) => {
+    const clock = mock.clock(on)
+    baseHooks(on)
+    // 虛擬的 issue 檔：Edit 依編輯前內容與替換字串回傳結果
+    const path = '/repo/.scratch/issues/01-archive.md'
+    let file = ['# 01', '', ...names.checklist.map(item => `- [ ] ${item}`)].join('\n')
+    on('tool.call', { tool: 'Edit' }, (_$, e) => {
+      const result = { filePath: e.file_path, oldString: e.old_string, newString: e.new_string, originalFile: file, structuredPatch: [], userModified: false, replaceAll: false }
+      file = contentAfterEdit(result) ?? file
+      return { result } as never
+    })
+    const tick = (item: string): Promise<unknown> =>
+      $.tool.call({ tool: 'Edit', file_path: path, old_string: `- [ ] ${item}`, new_string: `- [x] ${item}` })
+
+    await startTurn($)
+    // 第一次勾選時才開始追蹤，該項沒有耗時；之後每項從成為進行中算到勾起
+    await clock.advance(45_000)
+    await tick(names.checklist[0])
+    await clock.advance(130_000)
+    await tick(names.checklist[1])
+    await clock.advance(20_000)
+    await dump($, `${locale}:checklist-collapsed`)
+    await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
+    await dump($, `${locale}:checklist-expanded`)
   })
 
   test(`steps ${locale}`, async ($, on) => {
