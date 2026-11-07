@@ -127,6 +127,12 @@ scripts/gen-preview.sh         # 重新產生 docs/preview.svg 與 docs/preview.
 
 所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。
 
+### 0.6.0（2026-11-08）
+
+- 新增：markdown 核取清單當作任務清單。Claude 沒用任務工具、而是在 `.md` 檔（如 issue、計畫）勾選 `- [ ]` → `- [x]` 推進工作時，那份檔案成為任務清單：已勾為完成、第一個未勾的為進行中，並記錄每項耗時。透過 Edit、Write 或 Bash（如 `sed`）勾選都會偵測；只是新建清單或改寫未勾項目不會觸發。Claude 自己的任務清單優先
+- 變更：Bash 指令提到 `.md` 檔時，會在執行前後以 `$.fs.read` 讀取這些檔案（最多 5 個）比對勾選狀態，只讀不寫
+- 文件：「運作方式」註明 `prompt.submit` 不會改動送出的提示內容，並說明核取清單的追蹤方式
+
 ### [0.5.6](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.5.6)（2026-10-15）
 
 - 開發：`CLAUDE.md` 移至 `.claude/CLAUDE.md`，消除 `claude plugin validate` 對 plugin 根目錄 `CLAUDE.md` 的警告；Claude Code 仍會在本 repo 載入它作為專案說明

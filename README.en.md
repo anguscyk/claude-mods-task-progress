@@ -127,6 +127,12 @@ Project instructions for Claude Code are in `.claude/CLAUDE.md`.
 
 Release notes for every version are on [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases).
 
+### 0.6.0 (2026-11-08)
+
+- Added: markdown checklists as the task list. When Claude works through a `.md` file (an issue, a plan) by ticking `- [ ]` → `- [x]` instead of using the task tools, that file becomes the task list: ticked items are done, the first unticked one is in progress, and each item's duration is recorded. Ticks made with Edit, Write or Bash (such as `sed`) are all detected; merely creating a checklist or rewording unticked items does not switch modes. Claude's own task list takes precedence
+- Changed: when a Bash command names `.md` files, those files (up to 5) are read with `$.fs.read` before and after it runs to compare their ticks; they are only read, never written
+- Docs: "How it works" notes that `prompt.submit` never changes the submitted prompt, and explains how checklists are followed
+
 ### [0.5.6](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.5.6) (2026-10-15)
 
 - Development: moved `CLAUDE.md` to `.claude/CLAUDE.md`, which clears the `claude plugin validate` warning about a `CLAUDE.md` at the plugin root; Claude Code still loads it as project instructions in this repo
