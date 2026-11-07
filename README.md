@@ -72,7 +72,7 @@ Claude Code mod：在提示列上方顯示任務進度條、每個任務的耗�
 task-progress 只讀取資訊、不改變 Claude 的行為：
 
 - `tool.call`：觀察主對話的每個工具呼叫，記錄名稱、耗時與成敗（含錯誤摘要）。呼叫一律原樣放行，不修改輸入、不攔截、不改寫結果；`TaskCreate`／`TaskUpdate`／`TodoWrite` 另用來追蹤任務清單
-- `turn.start`／`turn.complete`／`prompt.submit`：計算本輪耗時、每輪重設步驟並自動收合
+- `turn.start`／`turn.complete`／`prompt.submit`：計算本輪耗時、每輪重設步驟並自動收合。`prompt.submit` 只用來重設收合狀態與清掉已全部完成的任務清單，送出的提示內容原樣放行、不做任何改動
 - `ui.render`（`AbovePrompt`）：在提示列上方繪製進度區塊，並保留其他 mod 在同一位置繪製的內容
 
 所有資料只存在本機 session 狀態中，不會傳送到任何地方。

@@ -72,7 +72,7 @@ Collapsed automatically when the turn ends:
 task-progress only reads; it never changes what Claude does:
 
 - `tool.call`: observes each tool call in the main conversation and records its name, duration and outcome (with an error summary). Every call passes through unchanged: its input is not modified, it is never blocked, and its result is not rewritten. `TaskCreate` / `TaskUpdate` / `TodoWrite` are also used to follow the task list
-- `turn.start` / `turn.complete` / `prompt.submit`: time the turn, reset the steps and collapse the band each turn
+- `turn.start` / `turn.complete` / `prompt.submit`: time the turn, reset the steps and collapse the band each turn. `prompt.submit` only resets the collapsed state and clears a task list whose tasks are all completed; the submitted prompt passes through unchanged
 - `ui.render` (`AbovePrompt`): draws the band above the prompt, keeping whatever other mods draw in the same place
 
 All data stays in the local session state and is never sent anywhere.
