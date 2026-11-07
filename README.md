@@ -38,6 +38,17 @@ Claude Code mod：在提示列上方顯示任務進度條、每個任務的耗�
   ○ 更新 README
 ```
 
+Claude 在 markdown 檔（如 issue、計畫）勾選 `- [ ]` 推進工作時，那份核取清單就成為任務清單：
+
+```
+[ - ] ████████░░░░░░░░░░░░ 2/5 (40%)  ▶ 確認 service worker 不攔截  ⟳ 3m15s
+  ✓ 打 tag season-1
+  ✓ 建置封存版                  2m10s
+  ▶ 確認 service worker 不攔截  20s
+  ○ 加上封存版測試
+  ○ 更新 CLAUDE.md
+```
+
 沒有任務清單時，以本輪的工具呼叫當作步驟：
 
 ```

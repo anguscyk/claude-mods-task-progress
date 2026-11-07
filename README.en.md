@@ -38,6 +38,17 @@ With more than 8 tasks: when collapsed, the band shows the done count and the mo
   ○ Update README
 ```
 
+When Claude works through a markdown file (an issue, a plan) by ticking `- [ ]`, that checklist becomes the task list:
+
+```
+[ - ] ████████░░░░░░░░░░░░ 2/5 (40%)  ▶ Check the service worker skips it  ⟳ 3m15s
+  ✓ Tag season-1
+  ✓ Build the archive                  2m10s
+  ▶ Check the service worker skips it  20s
+  ○ Add archive tests
+  ○ Update CLAUDE.md
+```
+
 Without a task list, the turn's tool calls are shown as steps:
 
 ```
