@@ -43,6 +43,7 @@ scripts/gen-preview.sh         # 重新產生 docs/preview.svg 與 docs/preview.
 
 ## Marketplace 審核限制
 
+- 官方 marketplace 目錄只接受「已驗證組織」（Verified organization）提交 mod（hooks 的 `modules`）與允許類型以外的檔案（允許的只有 Markdown、純文字、JSON、YAML、PNG／JPEG／GIF／WebP／ICO，且不得以 `#!` 開頭）。本帳號不是已驗證組織，v0.6.0（2026-11-08）因此被拒。照要求移除 `modules` 會讓 mod 失去全部功能，所以不在官方目錄上架，改以本 repo 的 `marketplace.json`（`--marketplace anguscyk/claude-mods-task-progress`）發布。不要為了通過官方目錄而刪除程式、測試、腳本或 SVG 示意圖。
 - 不要用 `h` 當變數名稱（JSX 編譯後的元素工廠，審核要求只用於呼叫）。
 - repo 內任何文字（含 README、腳本）都不要指名圖示檔路徑；會讀取憑證的腳本不納入版本控制。發布腳本 `scripts/release.sh` 與圖示腳本 `scripts/make-icon.py` 是維護者本機檔案，已被 `.gitignore` 排除。
 
