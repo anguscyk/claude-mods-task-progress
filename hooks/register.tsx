@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { PluginOptions, Register, StateDollar } from 'claude-code'
 
-import type { Step, StepStatus, Task, TaskStatus, Timing } from '../types'
+import type { Step, StepStatus, Task, TaskSource, TaskStatus, Timing } from '../types'
 
 const tasks = atom({ plugin: 'task-progress', key: 'tasks' } as const, [] as Task[])
 const timing = atom({ plugin: 'task-progress', key: 'timing' } as const, {
@@ -14,6 +14,9 @@ const timing = atom({ plugin: 'task-progress', key: 'timing' } as const, {
 const collapseOverride = atom({ plugin: 'task-progress', key: 'collapseOverride' } as const, null as boolean | null)
 
 const steps = atom({ plugin: 'task-progress', key: 'steps' } as const, [] as Step[])
+
+/** 任務清單來自 Claude 的任務工具，或某份 markdown 檔的核取清單 */
+const taskSource = atom({ plugin: 'task-progress', key: 'taskSource' } as const, null as TaskSource)
 
 const BAR_WIDTH = 20
 /** 步驟列表只列最近幾步，其餘摺疊 */
@@ -192,9 +195,51 @@ export function isCollapsedFor(override: boolean | null): boolean {
   return override ?? true
 }
 
-/** 更新任務清單 */
+/** 以 Claude 的任務工具更新任務清單；原本是 markdown 清單時先清空，改由任務工具接手 */
 async function updateTasks($: StateDollar, change: (list: Task[]) => Task[]): Promise<void> {
-  await update($, tasks, change)
+  const source = await read($, taskSource)
+  const fromNative = source?.kind === 'native'
+  await update($, tasks, list => change(fromNative ? list : []))
+  if (!fromNative) await update($, taskSource, () => ({ kind: 'native' }) as const)
+}
+
+/**
+ * markdown 檔被 Edit／Write／Read 後同步核取清單。
+ * 尚未追蹤的檔案，只有勾起核取方塊（已勾數增加）才成為任務清單：新建清單或改寫未勾項目的文字
+ * 多半是在規劃，不算進度。已追蹤的檔案任何變動（含完整讀取）都同步。Claude 的任務工具有清單時一律讓位。
+ */
+async function syncChecklist(
+  $: StateDollar,
+  path: string,
+  before: string | null,
+  after: string,
+  readOnly: boolean,
+  now: number,
+): Promise<void> {
+  const source = await read($, taskSource)
+  if (source?.kind === 'native' && (await read($, tasks)).length > 0) return
+  const tracked = source?.kind === 'markdown' && samePath(source.path, path)
+  const items = parseChecklist(after)
+  if (tracked && items.length === 0) {
+    await update($, tasks, () => [])
+    await update($, taskSource, () => null)
+    return
+  }
+  if (!tracked) {
+    if (readOnly || items.length === 0) return
+    const previous = before === null ? [] : parseChecklist(before)
+    if (checkedCount(items) <= checkedCount(previous)) return
+    // 編輯前已勾的項目當作早已完成（不計耗時），這次才勾的記下完成時間
+    const seed: Task[] = previous.map((item, i) => ({
+      id: `md-${i}`,
+      subject: item.subject,
+      status: item.done ? 'completed' : 'pending',
+    }))
+    await update($, tasks, () => checklistTasks(seed, items, now))
+    await update($, taskSource, () => ({ kind: 'markdown', path }) as const)
+    return
+  }
+  await update($, tasks, list => checklistTasks(list, items, now))
 }
 
 const basename = (path: string): string => path.split('/').filter(Boolean).pop() ?? path
@@ -233,6 +278,80 @@ export function errorSummary(ran: { deny?: string; isError?: true; text?: string
   return /^Exit code \d+$/.test(first) && second !== undefined ? `${first} · ${second}` : first
 }
 
+export type ChecklistItem = { subject: string; done: boolean }
+
+const isMarkdown = (path: string): boolean => /\.(md|markdown)$/i.test(path)
+
+/** 核取清單項目：「- [ ] 文字」「* [x] 文字」「1. [X] 文字」，可縮排 */
+const CHECKBOX = /^\s*(?:[-*+]|\d+[.)])\s+\[([ xX])\]\s+(.*)$/
+
+/** 解析 markdown 的核取清單（略過 ``` 與 ~~~ 程式碼區塊），名稱去掉粗體、斜體與行內程式碼標記 */
+export function parseChecklist(markdown: string): ChecklistItem[] {
+  const items: ChecklistItem[] = []
+  let fence: string | null = null
+  for (const line of markdown.split('\n')) {
+    const marker = /^\s*(```|~~~)/.exec(line)?.[1]
+    if (marker !== undefined) {
+      fence = fence === null ? marker : fence === marker ? null : fence
+      continue
+    }
+    if (fence !== null) continue
+    const match = CHECKBOX.exec(line)
+    if (match === null) continue
+    const subject = (match[2] ?? '').replace(/\*\*|__|`/g, '').replace(/\s+/g, ' ').trim()
+    if (subject !== '') items.push({ subject, done: match[1] !== ' ' })
+  }
+  return items
+}
+
+/** Edit 之後的完整內容：結果帶有編輯前的內容與替換字串；沒有編輯前內容時回 undefined */
+export function contentAfterEdit(result: {
+  originalFile: string | null
+  oldString: string
+  newString: string
+  replaceAll: boolean
+}): string | undefined {
+  const { originalFile, oldString, newString, replaceAll } = result
+  if (originalFile === null) return undefined
+  if (replaceAll && oldString !== '') return originalFile.split(oldString).join(newString)
+  const at = originalFile.indexOf(oldString)
+  return at < 0 ? originalFile : originalFile.slice(0, at) + newString + originalFile.slice(at + oldString.length)
+}
+
+/**
+ * 核取清單轉成任務：已勾為完成、第一個未勾的為進行中、其餘未開始。
+ * 以名稱比對沿用先前的計時；第一次看到就已勾選的項目沒有耗時。
+ */
+export function checklistTasks(prev: readonly Task[], items: readonly ChecklistItem[], now: number): Task[] {
+  const firstOpen = items.findIndex(item => !item.done)
+  return items.map((item, i) => {
+    const id = `md-${i}`
+    const base: Task = prev.find(p => p.subject === item.subject) ?? {
+      id,
+      subject: item.subject,
+      status: item.done ? 'completed' : 'pending',
+    }
+    const status: TaskStatus = item.done ? 'completed' : i === firstOpen ? 'in_progress' : 'pending'
+    return transition({ ...base, id }, status, now)
+  })
+}
+
+const checkedCount = (items: readonly ChecklistItem[]): number => items.filter(item => item.done).length
+
+/** Bash 指令中提到的 markdown 檔路徑（去重，最多 5 個） */
+export function markdownPaths(command: string): string[] {
+  const found = command.match(/[^\s'"`;|&()<>=]+\.(?:md|markdown)(?![\w.])/gi) ?? []
+  return [...new Set(found)].slice(0, 5)
+}
+
+/** 同一份檔案的不同寫法：絕對路徑與相對路徑以結尾比對 */
+function samePath(a: string, b: string): boolean {
+  const strip = (path: string): string => path.replace(/^\.\//, '')
+  const x = strip(a)
+  const y = strip(b)
+  return x === y || x.endsWith(`/${y}`) || y.endsWith(`/${x}`)
+}
+
 /** 點狀進度：完成（含失敗）為 ●、執行中為 ○，最多 MAX_DOTS 個 */
 export function dots(list: readonly Step[]): string {
   const finished = list.filter(s => s.status !== 'running').length
@@ -269,10 +388,12 @@ export const register: Register = (on, options) => {
   on('prompt.submit', async ($, e, next) => {
     // 送出提示（含斜線指令）即取消手動展開，回到預設收合
     await update($, collapseOverride, () => null)
-    // 新一輪開始時，若上一批任務皆已完成則清掉
-    await updateTasks($, list =>
-      list.length > 0 && list.every(t => t.status === 'completed') ? [] : list,
-    )
+    // 新一輪開始時，若上一批任務皆已完成則清掉（連同來源）
+    const list = await read($, tasks)
+    if (list.length > 0 && list.every(t => t.status === 'completed')) {
+      await update($, tasks, () => [])
+      await update($, taskSource, () => null)
+    }
     return next(e)
   }).catch(($, e, next) => next(e))
 
@@ -375,6 +496,53 @@ export const register: Register = (on, options) => {
                 : t,
             ),
       )
+    }
+    return ran
+  }).catch(($, e, next) => next(e))
+
+  // markdown 核取清單：只讀取工具結果，呼叫一律原樣放行
+  on('tool.call', { tool: 'Edit' }, async ($, e, next) => {
+    const ran = await next(e)
+    if (ran.deny === undefined && ran.isError !== true && ran.result.staged !== true && isMarkdown(e.file_path)) {
+      const after = contentAfterEdit(ran.result)
+      if (after !== undefined) await syncChecklist($, e.file_path, ran.result.originalFile, after, false, await $.clock.now())
+    }
+    return ran
+  }).catch(($, e, next) => next(e))
+
+  on('tool.call', { tool: 'Write' }, async ($, e, next) => {
+    const ran = await next(e)
+    if (ran.deny === undefined && ran.isError !== true && ran.result.staged !== true && isMarkdown(e.file_path)) {
+      await syncChecklist($, e.file_path, ran.result.originalFile, ran.result.content, false, await $.clock.now())
+    }
+    return ran
+  }).catch(($, e, next) => next(e))
+
+  on('tool.call', { tool: 'Read' }, async ($, e, next) => {
+    const ran = await next(e)
+    if (ran.deny === undefined && ran.isError !== true && ran.result.type === 'text' && isMarkdown(e.file_path)) {
+      const { file } = ran.result
+      // 只認整份讀取：分段讀取的內容不完整
+      const whole = file.startLine <= 1 && file.numLines >= file.totalLines && file.truncatedByTokenCap !== true
+      if (whole) await syncChecklist($, e.file_path, null, file.content, true, await $.clock.now())
+    }
+    return ran
+  }).catch(($, e, next) => next(e))
+
+  // Bash 改動 markdown（例如 sed 勾選）：執行前後各讀一次指令提到的檔案比對；讀不到就略過
+  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
+    const paths = markdownPaths(e.command)
+    if (paths.length === 0) return next(e)
+    const readText = (path: string): Promise<string | undefined> => $.fs.read(path).catch(() => undefined)
+    const before = await Promise.all(paths.map(readText))
+    const ran = await next(e)
+    // 指令失敗時檔案仍可能已被改動，只略過被拒絕的呼叫
+    if (ran.deny === undefined) {
+      const now = await $.clock.now()
+      for (const [i, path] of paths.entries()) {
+        const after = await readText(path)
+        if (after !== undefined) await syncChecklist($, path, before[i] ?? null, after, false, now)
+      }
     }
     return ran
   }).catch(($, e, next) => next(e))

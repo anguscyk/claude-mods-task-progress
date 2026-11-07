@@ -20,10 +20,11 @@ scripts/gen-preview.sh         # 重新產生 docs/preview.svg 與 docs/preview.
 ## 架構
 
 - `hooks/register.tsx`：全部邏輯。上半部是 export 的純函式（`formatDuration`、`visibleTasks`、`truncate`／`displayWidth`、`stepLabel`、`errorSummary`、`settingsFrom` 等），供測試直接匯入；下半部 `register` 註冊各 hook。
-- 狀態以 `atom({ plugin: 'task-progress', key })` 存在 session state：`tasks`、`timing`、`steps`、`collapseOverride`。新增 atom 時要同步更新 `types/index.d.ts` 裡 `declare module 'claude-code'` 的 `PluginState`。
+- 狀態以 `atom({ plugin: 'task-progress', key })` 存在 session state：`tasks`、`timing`、`steps`、`collapseOverride`、`taskSource`（任務清單來自任務工具或哪份 markdown 檔）。新增 atom 時要同步更新 `types/index.d.ts` 裡 `declare module 'claude-code'` 的 `PluginState`。
 - Hook 分工：
   - `tool.call`（不帶篩選）：主對話的每個呼叫記為一個 step；`e.agentId !== undefined`（子代理）一律略過。
-  - `tool.call` 對 `TodoWrite`／`TaskCreate`／`TaskUpdate`：呼叫成功後才更新任務清單。TodoWrite 每次送整份清單，以 `subject` 比對沿用舊的計時。
+  - `tool.call` 對 `TodoWrite`／`TaskCreate`／`TaskUpdate`：呼叫成功後才更新任務清單。TodoWrite 每次送整份清單，以 `subject` 比對沿用舊的計時。任務工具的清單優先，會取代 markdown 清單。
+  - `tool.call` 對 `Edit`／`Write`／`Read`／`Bash`：追蹤 `.md` 核取清單（`syncChecklist`）。Edit 的新內容由結果的 `originalFile` 與替換字串算出（`contentAfterEdit`），不讀檔；Bash 指令提到 `.md` 時才以 `$.fs.read` 在執行前後讀檔。尚未追蹤的檔案只有已勾數增加才成為任務清單，Read 只同步已追蹤的檔案。
   - `turn.start`／`turn.complete`／`prompt.submit`：計時、每輪清空 steps、重設收合狀態；`session.start` 用 `$.clock.every(1000)` 只在執行中刷新 `timing.now`。
   - `ui.render`（`AbovePrompt`）：有任務清單時畫進度條模式，否則畫步驟模式。
 - 不變條件（README「運作方式」與 marketplace 審核都依賴這些）：

@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
-import { bar, collapsedSummary, displayWidth, errorSummary, nameWidthFor, padToWidth, dots, stepCount, stepFailures, stepLabel, formatDuration, settingsFrom, truncate, isCollapsedFor, taskElapsed, transition, visibleTasks } from '../hooks/register'
+import { bar, checklistTasks, collapsedSummary, contentAfterEdit, displayWidth, errorSummary, markdownPaths, parseChecklist, nameWidthFor, padToWidth, dots, stepCount, stepFailures, stepLabel, formatDuration, settingsFrom, truncate, isCollapsedFor, taskElapsed, transition, visibleTasks } from '../hooks/register'
 import type { Task } from '../types'
 
 /** 代表下層 plugin（如 next-steps）畫的內容 */
@@ -523,4 +523,220 @@ test('錯誤的步驟在展開列表顯示摘要', async ($, on) => {
   const drawn = await band($)
   expect(drawn).toContain('✗ 執行 lint')
   expect(drawn).toContain('Exit code 1 · npm ERR! missing script: lint')
+})
+
+// ---- markdown 核取清單當作任務清單 ----
+
+const ISSUE = [
+  '# 01 封存賽季',
+  '',
+  '## 步驟',
+  '',
+  '- [x] 打 tag `season-1`。',
+  '- [ ] **建置**封存版',
+  '  - [ ] 子項目：確認 base',
+  '* [ ] 更新文件',
+  '1. [X] 編號項目',
+  '',
+  '```md',
+  '- [ ] 程式碼區塊裡的不算',
+  '```',
+  '- 一般清單不算',
+].join('\n')
+
+test('解析 markdown 核取清單', () => {
+  expect(parseChecklist(ISSUE)).toEqual([
+    { subject: '打 tag season-1。', done: true },
+    { subject: '建置封存版', done: false },
+    { subject: '子項目：確認 base', done: false },
+    { subject: '更新文件', done: false },
+    { subject: '編號項目', done: true },
+  ])
+  expect(parseChecklist('沒有核取方塊\n- 一般清單')).toEqual([])
+})
+
+test('由 Edit 結果算出編輯後的內容', () => {
+  const base = { filePath: '/a.md', structuredPatch: [], userModified: false }
+  expect(contentAfterEdit({ ...base, originalFile: 'a [ ] b [ ]', oldString: '[ ]', newString: '[x]', replaceAll: false })).toBe('a [x] b [ ]')
+  expect(contentAfterEdit({ ...base, originalFile: 'a [ ] b [ ]', oldString: '[ ]', newString: '[x]', replaceAll: true })).toBe('a [x] b [x]')
+  // 替換字串中的 $ 不是特殊字元
+  expect(contentAfterEdit({ ...base, originalFile: 'x', oldString: 'x', newString: '$&$1', replaceAll: false })).toBe('$&$1')
+  expect(contentAfterEdit({ ...base, originalFile: null, oldString: 'x', newString: 'y', replaceAll: false })).toBe(undefined)
+})
+
+test('核取清單轉成任務：第一個未勾的為進行中，沿用先前的計時', () => {
+  const first = checklistTasks([], [{ subject: 'A', done: true }, { subject: 'B', done: false }, { subject: 'C', done: false }], 1_000)
+  expect(first.map(t => t.status)).toEqual(['completed', 'in_progress', 'pending'])
+  expect(first[1]?.startedAt).toBe(1_000)
+  const second = checklistTasks(first, [{ subject: 'A', done: true }, { subject: 'B', done: true }, { subject: 'C', done: false }], 61_000)
+  expect(second.map(t => t.status)).toEqual(['completed', 'completed', 'in_progress'])
+  expect(taskElapsed(second[1] as Task, 99_000)).toBe(60_000)
+  expect(second[2]?.startedAt).toBe(61_000)
+})
+
+/** 模擬 Edit：依 originalFile 與替換字串回傳結果，並更新虛擬檔案 */
+function fakeFiles(on: On, files: Record<string, string>): void {
+  on('tool.call', { tool: 'Edit' }, (_$, e) => {
+    const originalFile = files[e.file_path] ?? null
+    const result = { filePath: e.file_path, oldString: e.old_string, newString: e.new_string, originalFile, structuredPatch: [], userModified: false, replaceAll: e.replace_all === true }
+    files[e.file_path] = contentAfterEdit(result) ?? ''
+    return { result } as never
+  })
+  on('tool.call', { tool: 'Write' }, (_$, e) => {
+    const originalFile = files[e.file_path] ?? null
+    files[e.file_path] = e.content
+    return { result: { type: originalFile === null ? 'create' : 'update', filePath: e.file_path, content: e.content, structuredPatch: [], originalFile } } as never
+  })
+  on('tool.call', { tool: 'Read' }, (_$, e) => {
+    const content = files[e.file_path] ?? ''
+    const lines = content.split('\n').length
+    return { result: { type: 'text', file: { filePath: e.file_path, content, numLines: lines, startLine: 1, totalLines: lines } } } as never
+  })
+}
+
+test('勾選 markdown 核取方塊時切到任務模式', async ($, on) => {
+  const clock = mock.clock(on)
+  answerBelow(on)
+  on('turn.start', (_$, e) => ({ turnId: e.turnId }))
+  const files: Record<string, string> = { '/p/issues/01.md': ISSUE, '/p/src/a.ts': 'const a = 1' }
+  fakeFiles(on, files)
+  await $.turn.start({ text: 'go', turnId: 't1' })
+
+  // 只讀取有核取方塊的檔案、或編輯非 markdown 檔：維持步驟模式
+  await $.tool.call({ tool: 'Read', file_path: '/p/issues/01.md' })
+  await $.tool.call({ tool: 'Edit', file_path: '/p/src/a.ts', old_string: '1', new_string: '2' })
+  expect(await band($)).toContain('●')
+  expect(await band($)).not.toContain('█')
+
+  await clock.advance(30_000)
+  await $.tool.call({ tool: 'Edit', file_path: '/p/issues/01.md', old_string: '- [ ] **建置**封存版', new_string: '- [x] **建置**封存版' })
+  const collapsed = await band($)
+  expect(collapsed).toContain('3/5 (60%)')
+  expect(collapsed).toContain('▶ 子項目：確認 base')
+  expect(collapsed).toContain('✓3/5 · 建置封存版')
+
+  await clock.advance(5_000)
+  await $.tool.call({ tool: 'Edit', file_path: '/p/issues/01.md', old_string: '  - [ ] 子項目', new_string: '  - [x] 子項目' })
+  await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
+  const expanded = await band($)
+  expect(expanded).toContain('4/5 (80%)')
+  // 從成為進行中到勾起的時間
+  expect(expanded).toContain('✓ 子項目：確認 base  5s')
+  expect(expanded).toContain('▶ 更新文件')
+})
+
+test('沒有改變勾選狀態的 markdown 編輯不切換模式', async ($, on) => {
+  mock.clock(on)
+  answerBelow(on)
+  on('turn.start', (_$, e) => ({ turnId: e.turnId }))
+  fakeFiles(on, { '/p/spec.md': ISSUE })
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.tool.call({ tool: 'Edit', file_path: '/p/spec.md', old_string: '# 01 封存賽季', new_string: '# 01 封存第一季' })
+  expect(await band($)).not.toContain('█')
+})
+
+test('已追蹤的清單被完整讀取時同步（例如被其他方式改過）', async ($, on) => {
+  mock.clock(on)
+  answerBelow(on)
+  const files: Record<string, string> = { '/p/plan.md': '- [ ] A\n- [ ] B' }
+  fakeFiles(on, files)
+  await $.tool.call({ tool: 'Edit', file_path: '/p/plan.md', old_string: '- [ ] A', new_string: '- [x] A' })
+  expect(await band($)).toContain('1/2 (50%)')
+  files['/p/plan.md'] = '- [x] A\n- [x] B'
+  await $.tool.call({ tool: 'Read', file_path: '/p/plan.md' })
+  expect(await band($)).toContain('2/2 (100%)')
+})
+
+test('新建或改寫未勾項目不觸發，勾起第一項才成為任務清單', async ($, on) => {
+  mock.clock(on)
+  answerBelow(on)
+  fakeFiles(on, {})
+  // 規劃階段一次建立多份清單：不跳到任務模式
+  await $.tool.call({ tool: 'Write', file_path: '/p/01.md', content: '# 計畫\n- [ ] 第一步\n- [ ] 第二步' })
+  await $.tool.call({ tool: 'Write', file_path: '/p/02.md', content: '- [ ] 其他' })
+  await $.tool.call({ tool: 'Edit', file_path: '/p/01.md', old_string: '- [ ] 第二步', new_string: '- [ ] 第二步（補充）' })
+  expect(await band($)).not.toContain('█')
+
+  await $.tool.call({ tool: 'Edit', file_path: '/p/01.md', old_string: '- [ ] 第一步', new_string: '- [x] 第一步' })
+  const drawn = await band($)
+  expect(drawn).toContain('1/2 (50%)')
+  expect(drawn).toContain('▶ 第二步（補充）')
+})
+
+test('從 Bash 指令找出 markdown 檔路徑', () => {
+  expect(markdownPaths(`sed -i '' 's/^- \\[ \\]/- [x]/' .scratch/season-2/issues/07-fold-baseline.md`)).toEqual([
+    '.scratch/season-2/issues/07-fold-baseline.md',
+  ])
+  expect(markdownPaths('python3 - "/p/計畫/a.md" b.MD; cat README.markdown')).toEqual(['/p/計畫/a.md', 'b.MD', 'README.markdown'])
+  expect(markdownPaths('cat a.md a.md')).toEqual(['a.md'])
+  expect(markdownPaths('npm test')).toEqual([])
+})
+
+test('Bash 改動 markdown 時前後各讀一次檔案比對', async ($, on) => {
+  const clock = mock.clock(on)
+  answerBelow(on)
+  const files: Record<string, string> = { '/p/issues/07.md': '- [ ] A\n- [ ] B\n- [ ] C' }
+  fakeFiles(on, files)
+  // 虛擬檔案都在 /p 底下；引擎會把相對路徑展開成工作目錄下的絕對路徑，以 /p 之後的部分比對
+  const find = (path: string): string | undefined =>
+    Object.keys(files).find(k => k === path || k.endsWith(`/${path}`) || path.endsWith(k.slice('/p'.length)))
+  on('fs.read', (_$, e) => {
+    const key = find(e.path)
+    if (key === undefined) throw new Error(`ENOENT: ${e.path}`)
+    return { value: files[key] as string }
+  })
+  // 模擬 sed：把指令指定的項目勾起
+  on('tool.call', { tool: 'Bash' }, (_$, e) => {
+    const key = find(markdownPaths(e.command)[0] ?? '')
+    const target = /check (\w)/.exec(e.command)?.[1]
+    if (key !== undefined && target !== undefined) files[key] = (files[key] ?? '').replace(`- [ ] ${target}`, `- [x] ${target}`)
+    return { result: {} } as never
+  })
+
+  // 只讀不改：不觸發
+  await $.tool.call({ tool: 'Bash', command: 'cat issues/07.md', description: '看清單' })
+  expect(await band($)).not.toContain('█')
+
+  await clock.advance(1_000)
+  await $.tool.call({ tool: 'Bash', command: 'sed check A issues/07.md', description: '勾 A' })
+  expect(await band($)).toContain('1/3 (33%)')
+  expect(await band($)).toContain('▶ B')
+
+  // 已追蹤（以相對路徑建立）的清單，之後用絕對路徑 Edit 也會同步
+  await $.tool.call({ tool: 'Edit', file_path: '/p/issues/07.md', old_string: '- [ ] B', new_string: '- [x] B' })
+  expect(await band($)).toContain('2/3 (67%)')
+
+  // 讀不到的檔案略過，指令照常完成
+  await $.tool.call({ tool: 'Bash', command: 'sed check C missing.md', description: '不存在' })
+  expect(await band($)).toContain('2/3 (67%)')
+})
+
+test('Claude 自己的任務清單優先於 markdown 核取清單', async ($, on) => {
+  mock.clock(on)
+  answerBelow(on)
+  fakeFiles(on, { '/p/plan.md': '- [ ] A\n- [ ] B' })
+  on('tool.call', { tool: 'TodoWrite' }, (_$, e) => ({ result: { oldTodos: [], newTodos: e.todos } }))
+
+  await $.tool.call({ tool: 'Edit', file_path: '/p/plan.md', old_string: '- [ ] A', new_string: '- [x] A' })
+  expect(await band($)).toContain('1/2 (50%)')
+
+  // TodoWrite 取代 markdown 清單
+  await $.tool.call({ tool: 'TodoWrite', todos: [{ content: 'x', status: 'in_progress', activeForm: 'X-ing' }] })
+  expect(await band($)).toContain('0/1 (0%)')
+  expect(await band($)).toContain('▶ X-ing')
+
+  // 之後的 markdown 勾選不會蓋掉 Claude 的清單
+  await $.tool.call({ tool: 'Edit', file_path: '/p/plan.md', old_string: '- [ ] B', new_string: '- [x] B' })
+  expect(await band($)).toContain('0/1 (0%)')
+})
+
+test('切換到另一份 markdown 清單時整份取代', async ($, on) => {
+  mock.clock(on)
+  answerBelow(on)
+  fakeFiles(on, { '/p/01.md': '- [ ] A\n- [ ] B', '/p/02.md': '- [ ] C\n- [ ] D\n- [ ] E' })
+  await $.tool.call({ tool: 'Edit', file_path: '/p/01.md', old_string: '- [ ] A', new_string: '- [x] A' })
+  await $.tool.call({ tool: 'Edit', file_path: '/p/02.md', old_string: '- [ ] C', new_string: '- [x] C' })
+  const drawn = await band($)
+  expect(drawn).toContain('1/3 (33%)')
+  expect(drawn).toContain('▶ D')
 })

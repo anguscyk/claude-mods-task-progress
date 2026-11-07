@@ -21,9 +21,20 @@ export type Step = {
   error?: string
 }
 export type Timing = { startedAt: number | null; now: number; lastMs: number | null }
+/**
+ * 任務清單的來源：Claude 自己的任務工具（TaskCreate／TaskUpdate／TodoWrite），
+ * 或某份 markdown 檔的核取清單（- [ ] / - [x]）；null 表示目前沒有任務清單
+ */
+export type TaskSource = { kind: 'native' } | { kind: 'markdown'; path: string } | null
 
 declare module 'claude-code' {
   interface PluginState {
-    'task-progress': { tasks: Task[]; timing: Timing; collapseOverride: boolean | null; steps: Step[] }
+    'task-progress': {
+      tasks: Task[]
+      timing: Timing
+      collapseOverride: boolean | null
+      steps: Step[]
+      taskSource: TaskSource
+    }
   }
 }

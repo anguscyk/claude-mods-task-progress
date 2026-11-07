@@ -58,6 +58,7 @@ Collapsed automatically when the turn ends:
 
 - **Step list**: without a task list, each tool call in the turn is a step (●○ dots plus "finished/total" such as 4/5 and the failure count ✗1; rows are marked ✓ succeeded / ✗ failed / ▶ running with their durations). Only the 5 most recent steps are listed; earlier ones fold into "… +N". When collapsed, the progress line shows the step that is running
 - **Progress bar**: from Claude's task list (`TaskCreate` / `TaskUpdate` / `TodoWrite`), shows the done count, percentage and the task in progress
+- **Markdown checklists**: when Claude works through a `.md` file (an issue, a plan) by ticking `- [ ]` → `- [x]` instead of using the task tools, that file becomes the task list: ticked items are done and the first unticked one is in progress. Ticks made with Edit, Write or Bash (such as `sed`) are all detected; merely creating a checklist or rewording unticked items does not switch modes. Claude's own task list takes precedence
 - **Task durations**: each task's time from in progress to completed; completed (✓), in progress (▶), not started (○)
 - **Elapsed time**: on the same line as the progress; ⟳ updates every second while the turn runs, then ◷ shows the last turn's duration (main conversation only, subagents excluded)
 - **Collapse / expand**: the `[ + ]` / `[ - ]` button at the start of the line (`[ + ]` collapsed, press to expand; `[ - ]` expanded, press to collapse). Always collapsed by default, even while running; expands only when you press it, and collapses again when the turn ends or you submit the next prompt
@@ -71,7 +72,7 @@ Collapsed automatically when the turn ends:
 
 task-progress only reads; it never changes what Claude does:
 
-- `tool.call`: observes each tool call in the main conversation and records its name, duration and outcome (with an error summary). Every call passes through unchanged: its input is not modified, it is never blocked, and its result is not rewritten. `TaskCreate` / `TaskUpdate` / `TodoWrite` are also used to follow the task list
+- `tool.call`: observes each tool call in the main conversation and records its name, duration and outcome (with an error summary). Every call passes through unchanged: its input is not modified, it is never blocked, and its result is not rewritten. `TaskCreate` / `TaskUpdate` / `TodoWrite` are also used to follow the task list, and the results of `Edit` / `Write` / `Read` on `.md` files to follow checklists. When a Bash command names `.md` files, those files (up to 5) are read with `$.fs.read` before and after it runs to compare their ticks; they are only read, never written
 - `turn.start` / `turn.complete` / `prompt.submit`: time the turn, reset the steps and collapse the band each turn. `prompt.submit` only resets the collapsed state and clears a task list whose tasks are all completed; the submitted prompt passes through unchanged
 - `ui.render` (`AbovePrompt`): draws the band above the prompt, keeping whatever other mods draw in the same place
 
