@@ -120,6 +120,20 @@ claude plugin install task-progress --marketplace anguscyk/claude-mods-task-prog
 
 不合法的值會改用預設值，小數無條件捨去。
 
+例如在 `~/.claude/settings.json` 把步驟的工具名稱改為繁體中文：
+
+```json
+{
+  "pluginConfigs": {
+    "task-progress@task-progress": {
+      "options": {
+        "toolLabels": "zh-TW"
+      }
+    }
+  }
+}
+```
+
 ## 開發
 
 ```

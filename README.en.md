@@ -120,6 +120,20 @@ Adjust them with `/plugin configure task-progress` after installing, or set them
 
 Invalid values fall back to the defaults; decimals are rounded down.
 
+For example, to show step tool names in Traditional Chinese, add this to `~/.claude/settings.json`:
+
+```json
+{
+  "pluginConfigs": {
+    "task-progress@task-progress": {
+      "options": {
+        "toolLabels": "zh-TW"
+      }
+    }
+  }
+}
+```
+
 ## Development
 
 ```
