@@ -139,7 +139,7 @@ scripts/gen-preview.sh         # 重新產生 docs/preview.svg 與 docs/preview.
 
 所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。
 
-### 0.7.0（2026-11-17）
+### [0.7.0](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.7.0)（2026-11-17）
 
 - 新增：`toolLabels` 設定（`en`／`zh-TW`，預設 `en`）。設為 `zh-TW` 時，步驟名稱前的工具名稱改為繁體中文，例如「Read register.tsx」→「讀取 register.tsx」、「Edit .gitignore」→「編輯 .gitignore」；不認得的工具維持原名，Bash 步驟原本就只顯示說明，不受影響。預設畫面不變
 - 文件：示意圖新增 `toolLabels: zh-TW` 的步驟列表畫面

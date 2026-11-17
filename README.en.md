@@ -139,7 +139,7 @@ Project instructions for Claude Code are in `.claude/CLAUDE.md`.
 
 Release notes for every version are on [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases).
 
-### 0.7.0 (2026-11-17)
+### [0.7.0](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.7.0) (2026-11-17)
 
 - Added: a `toolLabels` setting (`en` / `zh-TW`, default `en`). With `zh-TW`, the tool name in front of each step is shown in Traditional Chinese, for example "Read register.tsx" → "讀取 register.tsx" and "Edit .gitignore" → "編輯 .gitignore"; unknown tools keep their names, and Bash steps already show only their description, so they are unaffected. The default band is unchanged
 - Docs: the preview adds a step list shown with `toolLabels: zh-TW`
