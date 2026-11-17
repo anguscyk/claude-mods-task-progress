@@ -1,6 +1,6 @@
 {
   "name": "task-progress",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Shows a progress band above the prompt: a task progress bar with per-task durations, or the turn's tool calls as steps when there is no task list, plus elapsed time. Collapsed by default; press to expand.",
   "author": {
     "name": "anguscyk"
@@ -51,7 +51,10 @@
       "title": "Tool labels",
       "description": "Language of the tool names that prefix steps (Read, Edit, Write…). \"en\" keeps the original names; \"zh-TW\" shows Traditional Chinese (讀取, 編輯, 寫入…). Other values fall back to \"en\". Bash steps show their description, which this does not change.",
       "default": "en",
-      "options": ["en", "zh-TW"],
+      "options": [
+        "en",
+        "zh-TW"
+      ],
       "required": false
     }
   }
