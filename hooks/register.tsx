@@ -117,7 +117,38 @@ export const latestDone = (name: string): string => ` · ${name}`
 /** 摺疊的已完成任務數（不分語言），例如「… +3 ✓」 */
 export const moreDone = (n: number): string => `… +${n} ✓`
 
-export type Settings = { nameMax: number; foldThreshold: number; keepDone: number }
+/** 步驟名稱的工具前綴語言：`en` 保留工具原名（預設），`zh-TW` 改用繁體中文動詞 */
+export type ToolLabels = 'en' | 'zh-TW'
+
+/**
+ * `toolLabels: "zh-TW"` 時的工具前綴。這是畫面上唯一需要翻譯的文字，因此只在使用者明確選用時出現；
+ * 不在表中的工具（例如 MCP 工具）維持原名。
+ */
+export const TOOL_LABELS_ZH_TW: Readonly<Record<string, string>> = {
+  Read: '讀取',
+  Edit: '編輯',
+  MultiEdit: '編輯',
+  Write: '寫入',
+  NotebookEdit: '編輯筆記本',
+  Grep: '搜尋',
+  Glob: '找檔案',
+  WebFetch: '擷取網頁',
+  WebSearch: '網路搜尋',
+  Skill: '技能',
+  Agent: '子代理',
+  Task: '子代理',
+  TodoWrite: '更新待辦',
+  TaskCreate: '建立任務',
+  TaskUpdate: '更新任務',
+  TaskList: '列出任務',
+  ToolSearch: '載入工具',
+  AskUserQuestion: '詢問',
+  EnterPlanMode: '進入計畫模式',
+  ExitPlanMode: '提交計畫',
+  Monitor: '監看',
+}
+
+export type Settings = { nameMax: number; foldThreshold: number; keepDone: number; toolLabels: ToolLabels }
 
 /** 解析 userConfig 的所有選項 */
 export function settingsFrom(options: PluginOptions): Settings {
@@ -125,6 +156,9 @@ export function settingsFrom(options: PluginOptions): Settings {
     nameMax: intOption(options, 'nameMax', DEFAULT_NAME_MAX, 1),
     foldThreshold: intOption(options, 'foldThreshold', DEFAULT_FOLD_THRESHOLD, 1),
     keepDone: intOption(options, 'keepDone', DEFAULT_KEEP_DONE, 0),
+    // 只認得 zh-TW（不分大小寫、可含前後空白），其餘一律退回英文
+    toolLabels:
+      typeof options.toolLabels === 'string' && options.toolLabels.trim().toLowerCase() === 'zh-tw' ? 'zh-TW' : 'en',
   }
 }
 
@@ -244,8 +278,15 @@ async function syncChecklist(
 
 const basename = (path: string): string => path.split('/').filter(Boolean).pop() ?? path
 
-/** 工具呼叫的簡短描述，例如「Read register.tsx」「Bash 執行測試」 */
-export function stepLabel(tool: string, input: Readonly<Record<string, unknown>>): string {
+/**
+ * 工具呼叫的簡短描述，例如「Read register.tsx」；Bash 只顯示說明（如「執行測試」）。
+ * `toolLabels` 為 `zh-TW` 時工具名稱改用中文，例如「讀取 register.tsx」。
+ */
+export function stepLabel(
+  tool: string,
+  input: Readonly<Record<string, unknown>>,
+  toolLabels: ToolLabels = 'en',
+): string {
   const str = (key: string): string | undefined => {
     const v = input[key]
     return typeof v === 'string' && v.trim() !== '' ? v.trim().split('\n')[0] : undefined
@@ -257,9 +298,10 @@ export function stepLabel(tool: string, input: Readonly<Record<string, unknown>>
       : path !== undefined
         ? basename(path)
         : (str('description') ?? str('pattern') ?? str('url') ?? str('query') ?? str('skill'))
-  if (detail === undefined) return tool
+  const name = toolLabels === 'zh-TW' ? (TOOL_LABELS_ZH_TW[tool] ?? tool) : tool
+  if (detail === undefined) return name
   // Bash 的說明本身就描述了動作，不再加上工具名稱；其他工具（如 Read／Edit）保留，否則只看檔名分不出動作
-  return tool === 'Bash' ? detail : `${tool} ${detail}`
+  return tool === 'Bash' ? detail : `${name} ${detail}`
 }
 
 /**
@@ -372,7 +414,7 @@ export function stepFailures(list: readonly Step[]): string {
 }
 
 export const register: Register = (on, options) => {
-  const { nameMax, foldThreshold, keepDone } = settingsFrom(options)
+  const { nameMax, foldThreshold, keepDone, toolLabels } = settingsFrom(options)
 
   on('session.start', async ($, e, next) => {
     // 每秒刷新一次計時（僅在執行中才寫入，避免閒置時重繪）
@@ -427,7 +469,7 @@ export const register: Register = (on, options) => {
   on('tool.call', async ($, e, next) => {
     if (e.agentId !== undefined) return next(e)
     const id = `step-${++stepSeq}`
-    const label = stepLabel(e.tool, e as unknown as Readonly<Record<string, unknown>>)
+    const label = stepLabel(e.tool, e as unknown as Readonly<Record<string, unknown>>, toolLabels)
     const startedAt = await $.clock.now()
     const step: Step = { id, label, status: 'running', startedAt }
     await update($, steps, list => [...list, step])

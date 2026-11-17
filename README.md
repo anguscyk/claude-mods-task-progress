@@ -116,6 +116,7 @@ claude plugin install task-progress --marketplace anguscyk/claude-mods-task-prog
 | `nameMax` | 任務／步驟列表與收合摘要的名稱寬度上限（以終端機格數計，中文字佔 2 格），超過截斷加「…」；終端機較窄時會再自動收窄，避免換行（進度列的「進行中」一律顯示完整名稱） | 80 | 1–200 |
 | `foldThreshold` | 任務數超過此值時摺疊較早完成的任務 | 8 | 1–200 |
 | `keepDone` | 摺疊時保留最近完成的筆數（0 表示全部摺疊） | 3 | 0–200 |
+| `toolLabels` | 步驟名稱前的工具名稱語言：`en` 維持原名（`Read`、`Edit`、`Write`…），`zh-TW` 改為繁體中文（`讀取`、`編輯`、`寫入`…）；不認得的工具（如 MCP 工具）維持原名，Bash 步驟只顯示說明、不受影響 | `en` | `en`／`zh-TW` |
 
 不合法的值會改用預設值，小數無條件捨去。
 
@@ -137,6 +138,11 @@ scripts/gen-preview.sh         # 重新產生 docs/preview.svg 與 docs/preview.
 ## 變更紀錄
 
 所有版本的發布說明見 [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases)。
+
+### 0.7.0（2026-11-17）
+
+- 新增：`toolLabels` 設定（`en`／`zh-TW`，預設 `en`）。設為 `zh-TW` 時，步驟名稱前的工具名稱改為繁體中文，例如「Read register.tsx」→「讀取 register.tsx」、「Edit .gitignore」→「編輯 .gitignore」；不認得的工具維持原名，Bash 步驟原本就只顯示說明，不受影響。預設畫面不變
+- 文件：示意圖新增 `toolLabels: zh-TW` 的步驟列表畫面
 
 ### [0.6.0](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.6.0)（2026-11-08）
 

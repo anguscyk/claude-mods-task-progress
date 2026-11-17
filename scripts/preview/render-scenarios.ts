@@ -178,4 +178,24 @@ for (const locale of ['zh', 'en'] as const) {
     await $.turn.complete({ answer: '', durationMs: 0, isAborted: false, turnId: 't1', reason: 'answer' })
     await dump($, `${locale}:steps-after-turn`)
   })
+
+  // userConfig toolLabels: "zh-TW"：步驟的工具名稱改為中文（Bash 仍只顯示說明）
+  test(`steps-zh-tw ${locale}`, { options: { toolLabels: 'zh-TW' } }, async ($, on) => {
+    const clock = mock.clock(on)
+    baseHooks(on)
+    on('tool.call', { tool: 'Read' }, async () => { await clock.advance(400); return { result: {} } as never })
+    on('tool.call', { tool: 'Grep' }, async () => { await clock.advance(600); return { result: {} } as never })
+    on('tool.call', { tool: 'Edit' }, async () => { await clock.advance(1_200); return { result: {} } as never })
+    on('tool.call', { tool: 'Bash' }, async () => { await clock.advance(3_000); return { result: {} } as never })
+
+    await startTurn($)
+    await $.tool.call({ tool: 'Read', file_path: '/repo/hooks/register.tsx' })
+    await $.tool.call({ tool: 'Grep', pattern: 'stepLabel' })
+    await $.tool.call({ tool: 'Edit', file_path: '/repo/hooks/register.tsx', old_string: 'a', new_string: 'b' })
+    await $.tool.call({ tool: 'Bash', command: 'claude plugin test .', description: names.stepTest })
+    await clock.advance(2_000)
+    await dump($, `${locale}:steps-zh-tw-collapsed`)
+    await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
+    await dump($, `${locale}:steps-zh-tw-expanded`)
+  })
 }

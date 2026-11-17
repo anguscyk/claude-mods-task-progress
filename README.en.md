@@ -116,6 +116,7 @@ Adjust them in `/config` after installing, or set them under `pluginConfigs["tas
 | `nameMax` | Name width limit in the task/step list and the collapsed summary, in terminal columns (CJK characters take 2); longer names are cut and end with "…", and narrower terminals tighten it further so rows do not wrap (the running item on the progress line is always shown in full) | 80 | 1–200 |
 | `foldThreshold` | Fold earlier completed tasks when there are more tasks than this | 8 | 1–200 |
 | `keepDone` | Number of most recently completed tasks to keep when folding (0 folds them all) | 3 | 0–200 |
+| `toolLabels` | Language of the tool names that prefix steps: `en` keeps the original names (`Read`, `Edit`, `Write`…), `zh-TW` shows Traditional Chinese (`讀取`, `編輯`, `寫入`…); tools it does not know (such as MCP tools) keep their names, and Bash steps show only their description, so they are unaffected | `en` | `en` / `zh-TW` |
 
 Invalid values fall back to the defaults; decimals are rounded down.
 
@@ -137,6 +138,11 @@ Project instructions for Claude Code are in `.claude/CLAUDE.md`.
 ## Changelog
 
 Release notes for every version are on [GitHub Releases](https://github.com/anguscyk/claude-mods-task-progress/releases).
+
+### 0.7.0 (2026-11-17)
+
+- Added: a `toolLabels` setting (`en` / `zh-TW`, default `en`). With `zh-TW`, the tool name in front of each step is shown in Traditional Chinese, for example "Read register.tsx" → "讀取 register.tsx" and "Edit .gitignore" → "編輯 .gitignore"; unknown tools keep their names, and Bash steps already show only their description, so they are unaffected. The default band is unchanged
+- Docs: the preview adds a step list shown with `toolLabels: zh-TW`
 
 ### [0.6.0](https://github.com/anguscyk/claude-mods-task-progress/releases/tag/v0.6.0) (2026-11-08)
 

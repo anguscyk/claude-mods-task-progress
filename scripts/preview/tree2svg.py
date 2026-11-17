@@ -48,7 +48,7 @@ def cells(ch):
 COLORS = {None: '#d4d4d4', 'dim': '#7f848e', 'green': '#73c991', 'yellow': '#e5c07b', 'red': '#e06c75', 'button': '#61afef'}
 CW, LH, PAD = 8.4, 20, 16
 PANEL_KEYS = ['tasks-expanded', 'tasks-many-collapsed', 'tasks-many-expanded', 'checklist-expanded',
-              'steps-collapsed-running', 'steps-expanded', 'steps-after-turn']
+              'steps-collapsed-running', 'steps-expanded', 'steps-after-turn', 'steps-zh-tw-expanded']
 TITLES = {
     'zh': ['有任務清單（手動展開）',
            '任務超過 8 個：預設收合，顯示已完成數與最近完成的任務',
@@ -56,14 +56,16 @@ TITLES = {
            'markdown 核取清單：勾選 issue 的 - [ ] 後自動切到任務模式（手動展開）',
            '沒有任務清單：步驟列表執行中（預設收合）',
            '步驟列表手動展開',
-           '一輪結束後自動收合'],
+           '一輪結束後自動收合',
+           '設定 toolLabels: zh-TW：步驟的工具名稱顯示為中文（手動展開）'],
     'en': ['With a task list (expanded by hand)',
            'More than 8 tasks: collapsed by default, showing the done count and latest completed task',
            'More than 8 tasks: expanded, earlier completed tasks folded',
            'Markdown checklist: ticking - [ ] in an issue switches to the task view (expanded by hand)',
            'No task list: steps while running (collapsed by default)',
            'Step list expanded by hand',
-           'Collapsed automatically when the turn ends'],
+           'Collapsed automatically when the turn ends',
+           'With toolLabels: zh-TW, step tool names are shown in Traditional Chinese (expanded by hand)'],
 }
 ARIA = {'zh': 'task-progress 畫面示意', 'en': 'task-progress preview'}
 panels = list(zip(TITLES[LOCALE], PANEL_KEYS))

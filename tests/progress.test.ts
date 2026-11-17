@@ -213,10 +213,19 @@ test('展開列表的任務名稱超過 nameMax 時截斷', { options: { nameMax
 })
 
 test('userConfig 不合法時回預設值', () => {
-  expect(settingsFrom({})).toEqual({ nameMax: 80, foldThreshold: 8, keepDone: 3 })
-  expect(settingsFrom({ nameMax: 0, foldThreshold: 0, keepDone: -1 })).toEqual({ nameMax: 80, foldThreshold: 8, keepDone: 3 })
-  expect(settingsFrom({ nameMax: 'x', foldThreshold: '5', keepDone: true })).toEqual({ nameMax: 80, foldThreshold: 8, keepDone: 3 })
-  expect(settingsFrom({ nameMax: 8.7, foldThreshold: 4.2, keepDone: 0 })).toEqual({ nameMax: 8, foldThreshold: 4, keepDone: 0 })
+  const defaults = { nameMax: 80, foldThreshold: 8, keepDone: 3, toolLabels: 'en' }
+  expect(settingsFrom({})).toEqual(defaults)
+  expect(settingsFrom({ nameMax: 0, foldThreshold: 0, keepDone: -1 })).toEqual(defaults)
+  expect(settingsFrom({ nameMax: 'x', foldThreshold: '5', keepDone: true })).toEqual(defaults)
+  expect(settingsFrom({ nameMax: 8.7, foldThreshold: 4.2, keepDone: 0 })).toEqual({ ...defaults, nameMax: 8, foldThreshold: 4, keepDone: 0 })
+})
+
+test('userConfig toolLabels 只接受 zh-TW，其餘退回英文', () => {
+  expect(settingsFrom({ toolLabels: 'zh-TW' }).toolLabels).toBe('zh-TW')
+  expect(settingsFrom({ toolLabels: ' zh-tw ' }).toolLabels).toBe('zh-TW')
+  expect(settingsFrom({ toolLabels: 'en' }).toolLabels).toBe('en')
+  expect(settingsFrom({ toolLabels: 'ja' }).toolLabels).toBe('en')
+  expect(settingsFrom({ toolLabels: true }).toolLabels).toBe('en')
 })
 
 test('自訂摺疊門檻與保留筆數', () => {
@@ -284,6 +293,15 @@ test('步驟描述、點狀進度與摘要', () => {
   expect(stepLabel('Grep', { pattern: 'foo' })).toBe('Grep foo')
   expect(stepLabel('TaskList', {})).toBe('TaskList')
 
+  // toolLabels: zh-TW 只換工具名稱；Bash 仍只顯示說明，表外工具維持原名
+  expect(stepLabel('Read', { file_path: '/a/b/register.tsx' }, 'zh-TW')).toBe('讀取 register.tsx')
+  expect(stepLabel('Edit', { file_path: '/a/.gitignore' }, 'zh-TW')).toBe('編輯 .gitignore')
+  expect(stepLabel('Write', { file_path: '/a/README.md' }, 'zh-TW')).toBe('寫入 README.md')
+  expect(stepLabel('Grep', { pattern: 'foo' }, 'zh-TW')).toBe('搜尋 foo')
+  expect(stepLabel('TaskList', {}, 'zh-TW')).toBe('列出任務')
+  expect(stepLabel('Bash', { command: 'npm test', description: 'Run tests' }, 'zh-TW')).toBe('Run tests')
+  expect(stepLabel('mcp__foo__bar', { query: 'x' }, 'zh-TW')).toBe('mcp__foo__bar x')
+
   const s = (status: 'running' | 'done' | 'failed') => ({ id: status, label: status, status, startedAt: 0 })
   expect(dots([s('done'), s('failed'), s('running')])).toBe('●●○')
   expect(dots(Array.from({ length: 30 }, () => s('done')))).toBe('●'.repeat(20))
@@ -339,6 +357,24 @@ test('沒有任務清單時，以本輪工具呼叫當作步驟顯示', async ($
   // 新一輪重新計算
   await $.turn.start({ text: 'again', turnId: 't2' })
   expect(await band($)).not.toContain('●')
+})
+
+test('userConfig toolLabels: zh-TW 時步驟列表顯示中文工具名稱', { options: { toolLabels: 'zh-TW' } }, async ($, on) => {
+  mock.clock(on)
+  answerBelow(on)
+  on('turn.start', (_$, e) => ({ turnId: e.turnId }))
+  on('tool.call', { tool: 'Read' }, () => ({
+    result: { type: 'text', file: { filePath: '/x/a.ts', content: '', numLines: 0, startLine: 1, totalLines: 0 } },
+  }) as never)
+
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.tool.call({ tool: 'Read', file_path: '/x/a.ts' })
+  await band($)
+  await $.ui.press({ plugin: 'task-progress', key: 'toggle-tasks' })
+
+  const drawn = await band($)
+  expect(drawn).toContain('✓ 讀取 a.ts')
+  expect(drawn).not.toContain('Read a.ts')
 })
 
 test('沒有步驟也沒有任務時，耗時單獨一行', async ($, on) => {

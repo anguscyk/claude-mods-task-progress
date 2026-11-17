@@ -31,9 +31,9 @@ scripts/gen-preview.sh         # 重新產生 docs/preview.svg 與 docs/preview.
   - hook 只觀察：一律 `return next(e)` 或回傳 `next` 的結果，不修改輸入、不攔截、不改寫結果；每個 hook 都掛 `.catch(($, e, next) => next(e))`。
   - `ui.render` 一定先 `await next(e)` 取得下層內容並放進自己的區塊，否則會蓋掉其他 mod（如 next-steps）。
   - 收合狀態：`collapseOverride` 為 `null` 時一律收合，只有手動按鈕才展開；每輪開始／結束與送出提示時重設。
-  - 畫面文字只用不分語言的符號（✓ ✗ ▶ ○ ⟳ ◷ `[ + ]`），不要加入需翻譯的文字；避免 ⏲／⏱ 等 emoji 寬字元。
+  - 畫面文字只用不分語言的符號（✓ ✗ ▶ ○ ⟳ ◷ `[ + ]`），不要加入需翻譯的文字；避免 ⏲／⏱ 等 emoji 寬字元。唯一例外是步驟名稱的工具前綴：預設維持工具原名，只有 userConfig `toolLabels: "zh-TW"` 時才查 `TOOL_LABELS_ZH_TW` 換成中文，不在表中的工具維持原名。
   - 名稱截斷以終端機顯示寬度計算（`displayWidth`，CJK 佔 2 格），不是字元數。
-- `userConfig`（`nameMax`／`foldThreshold`／`keepDone`）定義在 `.claude-plugin/plugin.json`，經 `settingsFrom` 解析；不合法值退回預設、小數捨去。新增選項時要同時改 plugin.json、`settingsFrom` 與兩份 README 的設定表。
+- `userConfig`（`nameMax`／`foldThreshold`／`keepDone`／`toolLabels`）定義在 `.claude-plugin/plugin.json`，經 `settingsFrom` 解析；不合法值退回預設、小數捨去；`toolLabels` 在 plugin.json 以 `options` 限定 `en`／`zh-TW`（`/config` 顯示為選單，清單外的值視為未設定）。新增選項時要同時改 plugin.json、`settingsFrom` 與兩份 README 的設定表。
 
 ## 測試
 
