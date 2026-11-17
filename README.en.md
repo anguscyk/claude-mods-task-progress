@@ -109,7 +109,7 @@ The desktop app does not run `/plugin`: click + next to the prompt box, choose P
 
 ## Settings
 
-Adjust them in `/config` after installing, or set them under `pluginConfigs["task-progress"].options` in settings.json:
+Adjust them with `/plugin configure task-progress` after installing, or set them under `pluginConfigs["task-progress@task-progress"].options` in settings.json:
 
 | Option | Description | Default | Range |
 |--------|-------------|---------|-------|

@@ -109,7 +109,7 @@ claude plugin install task-progress --marketplace anguscyk/claude-mods-task-prog
 
 ## 設定
 
-安裝後可在 `/config` 調整，或寫在 settings.json 的 `pluginConfigs["task-progress"].options`：
+安裝後可用 `/plugin configure task-progress` 調整，或寫在 settings.json 的 `pluginConfigs["task-progress@task-progress"].options`：
 
 | 選項 | 說明 | 預設 | 範圍 |
 |------|------|------|------|
